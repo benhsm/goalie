@@ -37,10 +37,11 @@ type goalItem struct {
 }
 
 type goalListModel struct {
-	goals      []goalItem
-	focusIndex int
-	input      goalinput.Model
-	editting   bool
+	goals         []goalItem
+	focusIndex    int
+	input         goalinput.Model
+	editting      bool
+	height, width int
 }
 
 func NewGoalList() goalListModel {
@@ -66,6 +67,8 @@ func NewGoalList() goalListModel {
 		0,
 		goalinput.Model{},
 		false,
+		0,
+		0,
 	}
 
 	return glm
@@ -102,9 +105,9 @@ func (g goalItem) render(index int) string {
 
 func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	var cmd tea.Cmd
 
 	if m.editting {
-		var cmd tea.Cmd
 		m.input, cmd = m.input.Update(msg)
 		if m.input.Done || m.input.Cancelled {
 			m.editting = false
@@ -113,6 +116,9 @@ func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	} else {
 		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.height = msg.Height
+			m.width = msg.Width
 		case tea.KeyMsg:
 			switch {
 			case msg.Type == tea.KeyCtrlC:
@@ -124,6 +130,9 @@ func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case msg.String() == "a":
 				m.editting = true
 				m.input = goalinput.New()
+				m.input.SetSize(m.height, m.width)
+				initCmd := m.input.Init()
+				return m, initCmd
 			}
 		}
 	}

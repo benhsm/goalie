@@ -11,12 +11,16 @@ import (
 )
 
 var (
+	titleInputStyle = lipgloss.NewStyle().
+			Padding(0, 0, 1, 2)
+	descInputStyle = lipgloss.NewStyle().
+			Border(lipgloss.DoubleBorder(), true, true, true, true)
 	buttonStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFF7DB")).
 			Background(lipgloss.Color("#888B7E")).
 			BorderTop(true).
 			BorderLeft(true).
-			BorderBottom(true).Padding(0, 1)
+			BorderBottom(true).Padding(0, 1).Margin(1, 2)
 
 	focusedButton = buttonStyle.Copy().
 			Foreground(lipgloss.Color("#FFF7DB")).
@@ -66,25 +70,28 @@ func (m Model) Init() tea.Cmd {
 func (m Model) View() string {
 	var b strings.Builder
 
-	b.WriteString("   ")
-	b.WriteString(m.titleInput.View())
-	b.WriteString("\n\n")
-	b.WriteString(m.descInput.View())
-	b.WriteString("\n\n")
+	titleInput := titleInputStyle.Render(m.titleInput.View())
 
+	descInput := descInputStyle.Render(m.descInput.View())
+
+	inputFields := lipgloss.JoinVertical(lipgloss.Left, titleInput, descInput)
+
+	var doneButton, cancelButton string
 	if m.focusIndex == focusDone {
-		b.WriteString(focusedButton.Render("done"))
+		doneButton = focusedButton.Render("done")
 	} else {
-		b.WriteString(buttonStyle.Render("done"))
+		doneButton = buttonStyle.Render("done")
 	}
 
-	b.WriteString("  ")
 	if m.focusIndex == focusCancel {
-		b.WriteString(focusedButton.Render("cancel"))
+		cancelButton = focusedButton.Render("cancel")
 	} else {
-		b.WriteString(buttonStyle.Render("cancel"))
+		cancelButton = buttonStyle.Render("cancel")
 	}
-	b.WriteString("\n")
+
+	buttons := lipgloss.JoinHorizontal(lipgloss.Center, doneButton, cancelButton)
+
+	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, inputFields, buttons))
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
 		b.String())
@@ -116,6 +123,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.Done = true
 				} else if m.focusIndex == focusCancel {
 					m.Cancelled = true
+				} else {
+					m.focusIndex++
 				}
 			}
 
@@ -148,4 +157,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+func (m *Model) SetSize(height, width int) {
+	m.height = height
+	m.width = width
 }
