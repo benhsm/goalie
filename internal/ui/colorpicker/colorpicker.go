@@ -57,7 +57,7 @@ func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -76,6 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.info = "Sorry, that's not a valid color value."
 			} else {
 				m.Choice = lipgloss.Color(m.selection.Value())
+				m.selection.SetValue("")
 			}
 		}
 	}
@@ -111,4 +112,8 @@ func validColor(s string) bool {
 		return true
 	}
 	return false
+}
+
+func (m *Model) SetSize(h, w int) {
+	m.height, m.width = h, w
 }

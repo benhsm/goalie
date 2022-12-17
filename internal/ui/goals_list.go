@@ -12,8 +12,6 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 )
 
-// I think the bubbles list component introduces too much overhead and isn't as customizable as I'd like it to be.
-
 var (
 	docStyle         = lipgloss.NewStyle().Margin(1, 2)
 	descriptionStyle = func(color lipgloss.Color) lipgloss.Style {
@@ -111,6 +109,12 @@ func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.input, cmd = m.input.Update(msg)
 		if m.input.Done || m.input.Cancelled {
 			m.editting = false
+			newGoal := goalItem{
+				title: m.input.TitleInput.Value(),
+				desc:  m.input.DescInput.Value(),
+				color: m.input.Color,
+			}
+			m.goals = append(m.goals, newGoal)
 			m.input = goalinput.Model{}
 		}
 		return m, cmd

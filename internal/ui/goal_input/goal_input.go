@@ -1,7 +1,9 @@
 package goalinput
 
 import (
+	"math/rand"
 	"strings"
+	"time"
 
 	"github.com/benhsm/goals/internal/ui/colorpicker"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -20,7 +22,7 @@ var (
 			Background(lipgloss.Color("#888B7E")).
 			BorderTop(true).
 			BorderLeft(true).
-			BorderBottom(true).Padding(0, 1).Margin(1, 2)
+			BorderBottom(true).Padding(0, 1).Margin(1, 2, 0, 2)
 
 	focusedButton = buttonStyle.Copy().
 			Foreground(lipgloss.Color("#FFF7DB")).
@@ -31,19 +33,22 @@ var (
 // Model type
 
 type Model struct {
-	titleInput  textinput.Model
-	descInput   textarea.Model
-	focusIndex  int
-	colorpicker colorpicker.Model
-	Done        bool
-	Cancelled   bool
-	height      int
-	width       int
+	TitleInput    textinput.Model
+	DescInput     textarea.Model
+	focusIndex    int
+	colorpicker   colorpicker.Model
+	Done          bool
+	Cancelled     bool
+	Color         lipgloss.Color
+	height        int
+	width         int
+	choosingColor bool
 }
 
 const (
 	focusTitle = iota
 	focusDesc
+	focusColor
 	focusDone
 	focusCancel
 )
@@ -54,10 +59,15 @@ func New() Model {
 	ti.Focus()
 	ta := textarea.New()
 	ta.Placeholder = "goal description"
+
+	rand.Seed(time.Now().UnixNano())
+	cp := colorpicker.New()
+	randomIndex := rand.Intn(len(cp.Colors))
 	return Model{
-		titleInput:  ti,
-		descInput:   ta,
-		colorpicker: colorpicker.New(),
+		TitleInput:  ti,
+		DescInput:   ta,
+		colorpicker: cp,
+		Color:       cp.Colors[randomIndex],
 	}
 }
 
@@ -70,11 +80,25 @@ func (m Model) Init() tea.Cmd {
 func (m Model) View() string {
 	var b strings.Builder
 
-	titleInput := titleInputStyle.Render(m.titleInput.View())
+	if m.choosingColor {
+		return m.colorpicker.View()
+	}
 
-	descInput := descInputStyle.Render(m.descInput.View())
+	titleInput := titleInputStyle.Render(m.TitleInput.View())
+
+	descInput := descInputStyle.Render(m.DescInput.View())
 
 	inputFields := lipgloss.JoinVertical(lipgloss.Left, titleInput, descInput)
+
+	var colorButton, colorDisplay string
+	colorDisplay = lipgloss.NewStyle().Background(m.Color).Foreground(lipgloss.Color("#FFFFFF")).Render(string(m.Color))
+	if m.focusIndex == focusColor {
+		colorButton = focusedButton.Render("change color")
+	} else {
+		colorButton = buttonStyle.Render("change color")
+	}
+
+	colorField := lipgloss.JoinHorizontal(lipgloss.Center, colorButton, colorDisplay)
 
 	var doneButton, cancelButton string
 	if m.focusIndex == focusDone {
@@ -91,14 +115,30 @@ func (m Model) View() string {
 
 	buttons := lipgloss.JoinHorizontal(lipgloss.Center, doneButton, cancelButton)
 
-	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, inputFields, buttons))
+	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, inputFields, colorField, buttons))
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
 		b.String())
 }
 
 // Update
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if m.choosingColor {
+		m.colorpicker, cmd = m.colorpicker.Update(msg)
+		if m.colorpicker.Choice != "" {
+			m.choosingColor = false
+			m.Color = m.colorpicker.Choice
+			m.colorpicker.Choice = ""
+		}
+	} else {
+		m, cmd = m.goalInputUpdate(msg)
+	}
+	return m, cmd
+}
+
+func (m Model) goalInputUpdate(msg tea.Msg) (Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
@@ -123,6 +163,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.Done = true
 				} else if m.focusIndex == focusCancel {
 					m.Cancelled = true
+				} else if m.focusIndex == focusColor {
+					m.choosingColor = true
+					m.colorpicker.SetSize(m.height, m.width)
 				} else {
 					m.focusIndex++
 				}
@@ -135,25 +178,25 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			if m.focusIndex == focusTitle {
-				cmds = append(cmds, m.titleInput.Focus())
+				cmds = append(cmds, m.TitleInput.Focus())
 			} else {
-				m.titleInput.Blur()
+				m.TitleInput.Blur()
 			}
 
 			if m.focusIndex == focusDesc {
-				cmds = append(cmds, m.descInput.Focus())
+				cmds = append(cmds, m.DescInput.Focus())
 			} else {
-				m.descInput.Blur()
+				m.DescInput.Blur()
 			}
 
 			return m, tea.Batch(cmds...)
 		}
 	}
 
-	m.titleInput, cmd = m.titleInput.Update(msg)
+	m.TitleInput, cmd = m.TitleInput.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.descInput, cmd = m.descInput.Update(msg)
+	m.DescInput, cmd = m.DescInput.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
