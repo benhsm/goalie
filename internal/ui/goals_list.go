@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	goalinput "github.com/benhsm/goals/internal/ui/goal_input"
+
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
@@ -36,7 +39,8 @@ type goalItem struct {
 type goalListModel struct {
 	goals      []goalItem
 	focusIndex int
-	input      goalInputModel
+	input      goalinput.Model
+	editting   bool
 }
 
 func NewGoalList() goalListModel {
@@ -60,7 +64,8 @@ func NewGoalList() goalListModel {
 			},
 		},
 		0,
-		NewGoalInput(),
+		goalinput.Model{},
+		false,
 	}
 
 	return glm
@@ -72,16 +77,21 @@ func (m goalListModel) Init() tea.Cmd {
 
 func (m goalListModel) View() string {
 	var b strings.Builder
-	b.WriteString("Goals\n\n")
-	for i, g := range m.goals {
-		if i == m.focusIndex {
-			b.WriteString(selectedlistItemStyle.Render(g.render(i)))
-		} else {
-			b.WriteString(listItemStyle.Render(g.render(i)))
+
+	if m.editting {
+		return m.input.View()
+	} else {
+		b.WriteString("Goals\n\n")
+		for i, g := range m.goals {
+			if i == m.focusIndex {
+				b.WriteString(selectedlistItemStyle.Render(g.render(i)))
+			} else {
+				b.WriteString(listItemStyle.Render(g.render(i)))
+			}
+			b.WriteString("\n\n")
 		}
-		b.WriteString("\n\n")
+		return docStyle.Render(b.String())
 	}
-	return docStyle.Render(b.String())
 }
 
 func (g goalItem) render(index int) string {
@@ -91,18 +101,68 @@ func (g goalItem) render(index int) string {
 }
 
 func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case msg.Type == tea.KeyCtrlC:
-			return m, tea.Quit
-		case msg.String() == "k":
-			m.focusIndex--
-		case msg.String() == "j":
-			m.focusIndex++
+	var cmds []tea.Cmd
+
+	if m.editting {
+		var cmd tea.Cmd
+		m.input, cmd = m.input.Update(msg)
+		if m.input.Done || m.input.Cancelled {
+			m.editting = false
+			m.input = goalinput.Model{}
+		}
+		return m, cmd
+	} else {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case msg.Type == tea.KeyCtrlC:
+				return m, tea.Quit
+			case msg.String() == "k":
+				m.focusIndex--
+			case msg.String() == "j":
+				m.focusIndex++
+			case msg.String() == "a":
+				m.editting = true
+				m.input = goalinput.New()
+			}
 		}
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
+}
+
+type goalListKeyMap struct {
+	Up   key.Binding
+	Down key.Binding
+	Edit key.Binding
+	Add  key.Binding
+	Help key.Binding
+	Quit key.Binding
+}
+
+var goalListDefaultKeys = goalListKeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Edit: key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("e", "edit goal"),
+	),
+	Add: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "add goal"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
 }
