@@ -162,6 +162,7 @@ func (m Model) goalInputUpdate(msg tea.Msg) (Model, tea.Cmd) {
 				if m.focusIndex == focusDone {
 					m.Done = true
 				} else if m.focusIndex == focusCancel {
+					m.Done = true
 					m.Cancelled = true
 				} else if m.focusIndex == focusColor {
 					m.choosingColor = true
