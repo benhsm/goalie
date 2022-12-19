@@ -1,11 +1,12 @@
-package goalinput
+// Package goalinput provides an application specific Bubble Tea UI component
+// for adding or editing goals
+package goals
 
 import (
 	"math/rand"
 	"strings"
 	"time"
 
-	"github.com/benhsm/goals/internal/ui/colorpicker"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,13 +31,12 @@ var (
 			Underline(true)
 )
 
-// Model type
-
-type Model struct {
+// Model represents a goal input UI
+type goalInputModel struct {
 	TitleInput    textinput.Model
 	DescInput     textarea.Model
 	focusIndex    int
-	colorpicker   colorpicker.Model
+	colorpicker   colorPickerModel
 	Done          bool
 	Cancelled     bool
 	Color         lipgloss.Color
@@ -53,7 +53,8 @@ const (
 	focusCancel
 )
 
-func New() Model {
+// New returns a New goalinput model
+func newGoalInput() goalInputModel {
 	ti := textinput.New()
 	ti.Placeholder = "goal title"
 	ti.Focus()
@@ -61,9 +62,9 @@ func New() Model {
 	ta.Placeholder = "goal description"
 
 	rand.Seed(time.Now().UnixNano())
-	cp := colorpicker.New()
+	cp := newColorPicker()
 	randomIndex := rand.Intn(len(cp.Colors))
-	return Model{
+	return goalInputModel{
 		TitleInput:  ti,
 		DescInput:   ta,
 		colorpicker: cp,
@@ -71,13 +72,13 @@ func New() Model {
 	}
 }
 
-// Init
-func (m Model) Init() tea.Cmd {
+// Init returns a Bubble Tea command that initializes the goal model
+func (m goalInputModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// View
-func (m Model) View() string {
+// View returns a string that represents the goal input UI
+func (m goalInputModel) View() string {
 	var b strings.Builder
 
 	if m.choosingColor {
@@ -121,9 +122,8 @@ func (m Model) View() string {
 		b.String())
 }
 
-// Update
-
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+// Update is the Bubble Tea update loop for the goalInput component
+func (m goalInputModel) Update(msg tea.Msg) (goalInputModel, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.choosingColor {
 		m.colorpicker, cmd = m.colorpicker.Update(msg)
@@ -138,7 +138,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) goalInputUpdate(msg tea.Msg) (Model, tea.Cmd) {
+func (m goalInputModel) goalInputUpdate(msg tea.Msg) (goalInputModel, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
@@ -203,7 +203,8 @@ func (m Model) goalInputUpdate(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) SetSize(height, width int) {
+// SetSize sets the size of the goal inputt UI's frame.
+func (m *goalInputModel) SetSize(height, width int) {
 	m.height = height
 	m.width = width
 }

@@ -1,10 +1,8 @@
-package ui
+package goals
 
 import (
 	"fmt"
 	"strings"
-
-	goalinput "github.com/benhsm/goals/internal/ui/goal_input"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -33,51 +31,24 @@ type goalItem struct {
 	color       lipgloss.Color
 }
 
-type goalListModel struct {
+type Model struct {
 	goals         []goalItem
 	focusIndex    int
-	input         goalinput.Model
+	input         goalInputModel
 	editing       bool
 	adding        bool
 	height, width int
 }
 
-func NewGoalList() goalListModel {
-
-	glm := goalListModel{
-		[]goalItem{
-			{
-				"be the very best",
-				"that no one ever was. I need to beat all the gym leaders, and then the elite four. It's going to take a lot of work and I'll really need to train my party.",
-				"#FF0000",
-			},
-			{
-				"here's a really long one",
-				"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-				"#5F909C",
-			},
-			{
-				"catch 'em all",
-				"Man, there's so many pokemon in the pokedex, there's a lot of them for me to catch. There's like, hundreds of them.",
-				"#009900",
-			},
-		},
-		0,
-		goalinput.Model{},
-		false,
-		false,
-		0,
-		0,
-	}
-
-	return glm
+func New() Model {
+	return Model{}
 }
 
-func (m goalListModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m goalListModel) View() string {
+func (m Model) View() string {
 	var b strings.Builder
 
 	if m.editing {
@@ -92,7 +63,7 @@ func (m goalListModel) View() string {
 			}
 			b.WriteString("\n\n")
 		}
-		return docStyle.Render(b.String())
+		return frame.Render(b.String())
 	}
 }
 
@@ -102,7 +73,7 @@ func (g goalItem) render(index int) string {
 	return title + "\n" + desc
 }
 
-func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
@@ -125,7 +96,7 @@ func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.goals[m.focusIndex].color = m.input.Color
 				}
 			}
-			m.input = goalinput.Model{}
+			m.input = goalInputModel{}
 		}
 		return m, cmd
 	} else {
@@ -157,7 +128,7 @@ func (m goalListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.goals = removeItemFromSlice(m.goals, m.focusIndex)
 				case "a", "e":
 					m.editing = true
-					m.input = goalinput.New()
+					m.input = newGoalInput()
 					m.input.SetSize(m.height, m.width)
 					initCmd := m.input.Init()
 					if string(msg.Runes) == "e" {

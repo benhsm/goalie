@@ -1,4 +1,4 @@
-package colorpicker
+package goals
 
 import (
 	_ "embed"
@@ -16,23 +16,28 @@ var (
 	//go:embed hex_colors.txt
 	color_data string
 
-	docStyle   = lipgloss.NewStyle().Padding(1, 1)
+	frame      = lipgloss.NewStyle().Padding(1, 1)
 	inputStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder(), false, false, true, false)
 	colorRegex = regexp.MustCompile("^(#[A-Z0-9]{6})|([0-9]{1,3})$")
 )
 
-type Model struct {
-	Colors    []lipgloss.Color
+// colorPickerModel represents a UI for choosing a hex color
+type colorPickerModel struct {
+	// Colors is a slice a list of preset colors
+	Colors []lipgloss.Color
+
+	// Choice is a color chosen by the user
+	Choice    lipgloss.Color
 	selection textinput.Model
 	info      string
 	done      bool
-	Choice    lipgloss.Color
 	width     int
 	height    int
 }
 
-func New() Model {
+// New returns a new color picker model
+func newColorPicker() colorPickerModel {
 	colorStrings := strings.Split(color_data, "\n")
 	var colorList []lipgloss.Color
 	for _, color := range colorStrings {
@@ -46,18 +51,19 @@ func New() Model {
 	selection.CharLimit = 7
 	selection.Width = 13
 	selection.Focus()
-	return Model{
+	return colorPickerModel{
 		Colors:    colorList,
 		selection: selection,
 		info:      "Input either a hex code or an ANSI color code.",
 	}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m colorPickerModel) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+// Update is a Bubble Tea
+func (m colorPickerModel) Update(msg tea.Msg) (colorPickerModel, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
@@ -86,7 +92,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) View() string {
+func (m colorPickerModel) View() string {
 	var b strings.Builder
 	b.WriteString(inputStyle.Render(m.selection.View()))
 	b.WriteString("\n")
@@ -114,6 +120,6 @@ func validColor(s string) bool {
 	return false
 }
 
-func (m *Model) SetSize(h, w int) {
+func (m *colorPickerModel) SetSize(h, w int) {
 	m.height, m.width = h, w
 }
