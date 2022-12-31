@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/benhsm/goals/internal/ui/common"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
@@ -32,12 +33,12 @@ type goalItem struct {
 }
 
 type Model struct {
-	goals         []goalItem
-	focusIndex    int
-	input         goalInputModel
-	editing       bool
-	adding        bool
-	height, width int
+	common.Common
+	whys       []goalItem
+	focusIndex int
+	input      goalInputModel
+	editing    bool
+	adding     bool
 }
 
 func New() Model {
@@ -55,7 +56,7 @@ func (m Model) View() string {
 		return m.input.View()
 	} else {
 		b.WriteString("Goals\n\n")
-		for i, g := range m.goals {
+		for i, g := range m.whys {
 			if i == m.focusIndex {
 				b.WriteString(selectedlistItemStyle.Render(g.render(i)))
 			} else {
@@ -88,12 +89,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						desc:  m.input.DescInput.Value(),
 						color: m.input.Color,
 					}
-					m.goals = append(m.goals, newGoal)
+					m.whys = append(m.whys, newGoal)
 					m.adding = false
 				} else {
-					m.goals[m.focusIndex].title = m.input.TitleInput.Value()
-					m.goals[m.focusIndex].desc = m.input.DescInput.Value()
-					m.goals[m.focusIndex].color = m.input.Color
+					m.whys[m.focusIndex].title = m.input.TitleInput.Value()
+					m.whys[m.focusIndex].desc = m.input.DescInput.Value()
+					m.whys[m.focusIndex].color = m.input.Color
 				}
 			}
 			m.input = goalInputModel{}
@@ -102,8 +103,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
-			m.height = msg.Height
-			m.width = msg.Width
+			m.SetSize(msg.Height, msg.Width)
 		case tea.KeyMsg:
 			switch msg.Type {
 			case tea.KeyCtrlC:
@@ -116,25 +116,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusIndex++
 				case "K":
 					if m.focusIndex > 0 {
-						m.goals[m.focusIndex-1], m.goals[m.focusIndex] = m.goals[m.focusIndex], m.goals[m.focusIndex-1]
+						m.whys[m.focusIndex-1], m.whys[m.focusIndex] = m.whys[m.focusIndex], m.whys[m.focusIndex-1]
 						m.focusIndex--
 					}
 				case "J":
-					if m.focusIndex < len(m.goals)-1 {
-						m.goals[m.focusIndex+1], m.goals[m.focusIndex] = m.goals[m.focusIndex], m.goals[m.focusIndex+1]
+					if m.focusIndex < len(m.whys)-1 {
+						m.whys[m.focusIndex+1], m.whys[m.focusIndex] = m.whys[m.focusIndex], m.whys[m.focusIndex+1]
 						m.focusIndex++
 					}
 				case "d":
-					m.goals = removeItemFromSlice(m.goals, m.focusIndex)
+					m.whys = removeItemFromSlice(m.whys, m.focusIndex)
 				case "a", "e":
 					m.editing = true
 					m.input = newGoalInput()
-					m.input.SetSize(m.height, m.width)
+					m.input.SetSize(m.Height, m.Width)
 					initCmd := m.input.Init()
 					if string(msg.Runes) == "e" {
-						m.input.TitleInput.SetValue(m.goals[m.focusIndex].title)
-						m.input.DescInput.SetValue(m.goals[m.focusIndex].desc)
-						m.input.Color = m.goals[m.focusIndex].color
+						m.input.TitleInput.SetValue(m.whys[m.focusIndex].title)
+						m.input.DescInput.SetValue(m.whys[m.focusIndex].desc)
+						m.input.Color = m.whys[m.focusIndex].color
 					} else {
 						m.adding = true
 					}
@@ -143,11 +143,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		if m.focusIndex > len(m.goals)-1 {
+		if m.focusIndex > len(m.whys)-1 {
 			m.focusIndex = 0
 		}
 		if m.focusIndex < 0 {
-			m.focusIndex = len(m.goals) - 1
+			m.focusIndex = len(m.whys) - 1
 		}
 
 		return m, tea.Batch(cmds...)

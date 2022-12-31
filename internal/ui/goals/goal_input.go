@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/benhsm/goals/internal/ui/common"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -33,6 +34,7 @@ var (
 
 // Model represents a goal input UI
 type goalInputModel struct {
+	common.Common
 	TitleInput    textinput.Model
 	DescInput     textarea.Model
 	focusIndex    int
@@ -40,8 +42,6 @@ type goalInputModel struct {
 	Done          bool
 	Cancelled     bool
 	Color         lipgloss.Color
-	height        int
-	width         int
 	choosingColor bool
 }
 
@@ -118,7 +118,7 @@ func (m goalInputModel) View() string {
 
 	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, inputFields, colorField, buttons))
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
+	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center,
 		b.String())
 }
 
@@ -144,8 +144,7 @@ func (m goalInputModel) goalInputUpdate(msg tea.Msg) (goalInputModel, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.height = msg.Height
-		m.width = msg.Width
+		m.SetSize(msg.Height, msg.Width)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -166,7 +165,7 @@ func (m goalInputModel) goalInputUpdate(msg tea.Msg) (goalInputModel, tea.Cmd) {
 					m.Cancelled = true
 				} else if m.focusIndex == focusColor {
 					m.choosingColor = true
-					m.colorpicker.SetSize(m.height, m.width)
+					m.colorpicker.SetSize(m.Height, m.Width)
 				} else {
 					m.focusIndex++
 				}
@@ -201,10 +200,4 @@ func (m goalInputModel) goalInputUpdate(msg tea.Msg) (goalInputModel, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
-}
-
-// SetSize sets the size of the goal inputt UI's frame.
-func (m *goalInputModel) SetSize(height, width int) {
-	m.height = height
-	m.width = width
 }

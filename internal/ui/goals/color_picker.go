@@ -2,14 +2,13 @@ package goals
 
 import (
 	_ "embed"
-	"log"
 	"regexp"
 	"strings"
 
+	"github.com/benhsm/goals/internal/ui/common"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
 )
 
 var (
@@ -32,8 +31,7 @@ type colorPickerModel struct {
 	selection textinput.Model
 	info      string
 	done      bool
-	width     int
-	height    int
+	common.Common
 }
 
 // New returns a new color picker model
@@ -68,11 +66,7 @@ func (m colorPickerModel) Update(msg tea.Msg) (colorPickerModel, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		width, height, err := term.GetSize(0)
-		if err != nil {
-			log.Fatalf("error setting terminal size")
-		}
-		m.width, m.height = width, height
+		m.SetSize(msg.Height, msg.Width)
 	case tea.KeyMsg:
 		switch {
 		case msg.Type == tea.KeyCtrlC:
@@ -106,7 +100,7 @@ func (m colorPickerModel) View() string {
 		b.WriteString(renderColor(color))
 		b.WriteString(" ")
 	}
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, b.String())
 }
 
 func renderColor(color lipgloss.Color) string {
@@ -118,8 +112,4 @@ func validColor(s string) bool {
 		return true
 	}
 	return false
-}
-
-func (m *colorPickerModel) SetSize(h, w int) {
-	m.height, m.width = h, w
 }
