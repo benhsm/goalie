@@ -41,8 +41,10 @@ type Model struct {
 	adding     bool
 }
 
-func New() Model {
-	return Model{}
+func New(c common.Common) Model {
+	return Model{
+		Common: c,
+	}
 }
 
 func (m Model) Init() tea.Cmd {

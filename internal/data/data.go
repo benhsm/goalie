@@ -1,9 +1,11 @@
 package data
 
 import (
-	"database/sql"
+	"log"
 	"time"
 
+	"github.com/adrg/xdg"
+	"gorm.io/driver/sqlite"
 	_ "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -13,7 +15,7 @@ import (
 
 // Types
 
-type Goal struct {
+type Why struct {
 	ID        uint
 	CreatedAt time.Time
 
@@ -35,19 +37,38 @@ type Intention struct {
 	Done      bool
 	Cancelled bool
 
-	Goals []*Goal `gorm:"many2many:goals_intentions;"`
+	Whys []*Why `gorm:"many2many:goals_intentions;"`
 }
 
-func GetDailyIntentions(db gorm.DB, day time.Time) []Intention {
+func NewStore() Store {
+	dataFilePath, err := xdg.DataFile("why/why.db")
+	if err != nil {
+		log.Fatalf("Could not find datafile path: %v", err)
+	}
+	db, err := gorm.Open(sqlite.Open(dataFilePath))
+	if err != nil {
+		log.Fatalf("Error opening database: %v", err)
+	}
+	db.AutoMigrate(&Why{}, &Intention{})
+	return Store{
+		db: db,
+	}
+}
+
+type Store struct {
+	db *gorm.DB
+}
+
+func (s *Store) GetDailyIntentions(day time.Time) ([]Intention, error) {
 	// Day is considered to begin at 4:00AM
 	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 4, 0, 0, 0, day.Location())
 	dayEnd := dayStart.Add(time.Duration(24) * time.Hour)
 	var result []Intention
-	db.Where("created_at BETWEEN ? AND ?", dayStart, dayEnd).Find(&result)
-	return result
+	err := s.db.Model(&Intention{}).Preload("Whys").Where("created_at BETWEEN ? AND ?", dayStart, dayEnd).Find(&result).Error
+	return result, err
 }
 
-type GoalStatusEnum int
+type WhyStatusEnum int
 
 const (
 	Active = iota
@@ -55,24 +76,23 @@ const (
 	All
 )
 
-func GetGoals(db gorm.DB, status GoalStatusEnum) []Goal {
-	var result []Goal
+func (s *Store) GetWhys(status WhyStatusEnum) ([]Why, error) {
+	var result []Why
+	var err error
 	switch status {
 	case Active:
-		db.Where("archived = 0").Find(&result)
+		err = s.db.Where("archived = 0").Find(&result).Error
 	case Archived:
-		db.Where("archived = 1").Find(&result)
+		err = s.db.Where("archived = 1").Find(&result).Error
 	case All:
-		db.Find(&result)
+		err = s.db.Find(&result).Error
 	}
-	return result
+	return result, err
 }
 
-func UpsertItems[T Goal | Intention](db *sql.DB, items []T) error {
-	if err := db.Clauses(clause.OnConflict{
+func (s *Store) UpsertItems(items []any) error {
+	err := s.db.Clauses(clause.OnConflict{
 		UpdateAll: true,
-	}).Create(&items).Error; err != nil {
-		return err
-	}
-	return nil
+	}).Create(&items).Error
+	return err
 }

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/benhsm/goals/internal/ui/common"
 	goals "github.com/benhsm/goals/internal/ui/goals"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -14,14 +15,16 @@ const (
 
 // Model is the main UI model
 type Model struct {
+	common.Common
 	pages []tea.Model
 	state int
 }
 
 func New() Model {
-	result := Model{}
+	c := common.NewCommon()
+	result := Model{Common: c}
 	result.pages = make([]tea.Model, 4)
-	result.pages[goalsView] = goals.New()
+	result.pages[goalsView] = goals.New(c)
 	return result
 }
 
