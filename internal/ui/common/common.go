@@ -28,14 +28,17 @@ func (c *Common) SetSize(height, width int) {
 
 type ErrMsg struct{ err error }
 
-type WhyDataMsg []data.Why
+type WhyDataMsg struct {
+	Data  []data.Why
+	Error error
+}
 
 func (c *Common) ReadWhys(filter data.WhyStatusEnum) tea.Cmd {
 	return func() tea.Msg {
 		res, err := c.Store.GetWhys(filter)
-		if err != nil {
-			return ErrMsg{err}
+		return WhyDataMsg{
+			Data:  res,
+			Error: err,
 		}
-		return WhyDataMsg(res)
 	}
 }
