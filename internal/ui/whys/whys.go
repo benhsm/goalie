@@ -2,8 +2,10 @@ package goals
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/benhsm/goals/internal/data"
 	"github.com/benhsm/goals/internal/ui/common"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -27,14 +29,9 @@ var (
 				Padding(0, 0, 0, 0)
 )
 
-type goalItem struct {
-	title, desc string
-	color       lipgloss.Color
-}
-
 type Model struct {
 	common.Common
-	whys       []goalItem
+	whys       []data.Why
 	focusIndex int
 	input      goalInputModel
 	editing    bool
@@ -60,9 +57,9 @@ func (m Model) View() string {
 		b.WriteString("Goals\n\n")
 		for i, g := range m.whys {
 			if i == m.focusIndex {
-				b.WriteString(selectedlistItemStyle.Render(g.render(i)))
+				b.WriteString(selectedlistItemStyle.Render(render(g, strconv.Itoa(i+1))))
 			} else {
-				b.WriteString(listItemStyle.Render(g.render(i)))
+				b.WriteString(listItemStyle.Render(render(g, strconv.Itoa(i+1))))
 			}
 			b.WriteString("\n\n")
 		}
@@ -70,9 +67,9 @@ func (m Model) View() string {
 	}
 }
 
-func (g goalItem) render(index int) string {
-	title := titleStyle(g.color).Render(fmt.Sprintf("%d) %s", index+1, g.title))
-	desc := descriptionStyle(g.color).Render(wordwrap.String(g.desc, 80))
+func render(w data.Why, prefix string) string {
+	title := titleStyle(w.Color).Render(fmt.Sprintf("%s) %s", prefix, w.Name))
+	desc := descriptionStyle(w.Color).Render(wordwrap.String(w.Description, 80))
 	return title + "\n" + desc
 }
 
@@ -86,17 +83,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editing = false
 			if !m.input.Cancelled {
 				if m.adding {
-					newGoal := goalItem{
-						title: m.input.TitleInput.Value(),
-						desc:  m.input.DescInput.Value(),
-						color: m.input.Color,
+					newGoal := data.Why{
+						Name:        m.input.TitleInput.Value(),
+						Description: m.input.DescInput.Value(),
+						Color:       m.input.Color,
 					}
 					m.whys = append(m.whys, newGoal)
 					m.adding = false
 				} else {
-					m.whys[m.focusIndex].title = m.input.TitleInput.Value()
-					m.whys[m.focusIndex].desc = m.input.DescInput.Value()
-					m.whys[m.focusIndex].color = m.input.Color
+					m.whys[m.focusIndex].Name = m.input.TitleInput.Value()
+					m.whys[m.focusIndex].Description = m.input.DescInput.Value()
+					m.whys[m.focusIndex].Color = m.input.Color
 				}
 			}
 			m.input = goalInputModel{}
@@ -134,9 +131,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.input.SetSize(m.Height, m.Width)
 					initCmd := m.input.Init()
 					if string(msg.Runes) == "e" {
-						m.input.TitleInput.SetValue(m.whys[m.focusIndex].title)
-						m.input.DescInput.SetValue(m.whys[m.focusIndex].desc)
-						m.input.Color = m.whys[m.focusIndex].color
+						m.input.TitleInput.SetValue(m.whys[m.focusIndex].Name)
+						m.input.DescInput.SetValue(m.whys[m.focusIndex].Description)
+						m.input.Color = m.whys[m.focusIndex].Color
 					} else {
 						m.adding = true
 					}
@@ -157,11 +154,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // Remove an item from a slice of items at the given index. This runs in O(n).
-func removeItemFromSlice(i []goalItem, index int) []goalItem {
+func removeItemFromSlice(i []data.Why, index int) []data.Why {
 	if index >= len(i) {
 		return i // noop
 	}
 	copy(i[index:], i[index+1:])
-	i[len(i)-1] = goalItem{}
+	i[len(i)-1] = data.Why{}
 	return i[:len(i)-1]
 }
