@@ -57,6 +57,7 @@ const (
 func newGoalInput() goalInputModel {
 	ti := textinput.New()
 	ti.Placeholder = "goal title"
+	ti.CharLimit = 50
 	ti.Focus()
 	ta := textarea.New()
 	ta.Placeholder = "goal description"

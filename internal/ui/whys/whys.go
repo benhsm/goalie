@@ -9,19 +9,29 @@ import (
 	"github.com/benhsm/goals/internal/ui/common"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/wordwrap"
 )
+
+const banner = `░█▀█░█▀▀░▀█▀░▀█▀░█░█░█▀▀░░░█▀▀░█▀█░█▀█░█░░░█▀▀
+░█▀█░█░░░░█░░░█░░▀▄▀░█▀▀░░░█░█░█░█░█▀█░█░░░▀▀█
+░▀░▀░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀
+
+`
 
 var (
 	docStyle         = lipgloss.NewStyle().Margin(1, 2)
 	descriptionStyle = func(color lipgloss.Color) lipgloss.Style {
-		return lipgloss.NewStyle().Foreground(color)
+		return lipgloss.NewStyle().Background(color).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Width(80).
+			Height(2).
+			Padding(0, 0, 0, 4)
 	}
 	titleStyle = func(color lipgloss.Color) lipgloss.Style {
 		return lipgloss.NewStyle().
 			Background(color).
 			Foreground(lipgloss.Color("#FFFFFF")).
-			Bold(true).Padding(0, 1, 0, 1)
+			Bold(true).Padding(0, 0, 0, 1).
+			Width(80)
 	}
 	listItemStyle         = lipgloss.NewStyle().Padding(0, 0, 0, 1)
 	selectedlistItemStyle = listItemStyle.Copy().
@@ -65,12 +75,12 @@ func (m Model) View() string {
 	if m.editing {
 		return m.input.View()
 	} else {
-		b.WriteString("Goals\n\n")
+		b.WriteString(banner)
 		for i, g := range m.whys {
 			if i == m.focusIndex {
-				b.WriteString(selectedlistItemStyle.Render(render(g, strconv.Itoa(i+1))))
+				b.WriteString(selectedlistItemStyle.Render(WhyRender(g, strconv.Itoa(i+1))))
 			} else {
-				b.WriteString(listItemStyle.Render(render(g, strconv.Itoa(i+1))))
+				b.WriteString(listItemStyle.Render(WhyRender(g, strconv.Itoa(i+1))))
 			}
 			b.WriteString("\n\n")
 		}
@@ -83,13 +93,14 @@ func (m Model) View() string {
 			b.WriteString("syncing with database...\n")
 		}
 		b.WriteString(m.errMessage)
-		return frame.Render(b.String())
+		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, docStyle.Render(b.String()))
 	}
 }
 
-func render(w data.Why, prefix string) string {
-	title := titleStyle(w.Color).Render(fmt.Sprintf("%s) %s", prefix, w.Name))
-	desc := descriptionStyle(w.Color).Render(wordwrap.String(w.Description, 80))
+func WhyRender(w data.Why, prefix string) string {
+	contents := fmt.Sprintf("%s) %s", prefix, w.Name)
+	title := titleStyle(w.Color).Render(contents)
+	desc := descriptionStyle(w.Color).Render(w.Description)
 	return title + "\n" + desc
 }
 
