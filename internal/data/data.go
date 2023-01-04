@@ -26,7 +26,12 @@ type Why struct {
 	Color    lipgloss.Color
 	Archived bool
 
-	Intentions []*Intention `gorm:"many2many:goals_intentions;"`
+	Intentions []*Intention `gorm:"many2many:whys_intentions;"`
+}
+
+// TableName overrides the gorm table name used by Why to "whys"
+func (Why) TableName() string {
+	return "whys"
 }
 
 type Intention struct {
@@ -37,7 +42,7 @@ type Intention struct {
 	Done      bool
 	Cancelled bool
 
-	Whys []*Why `gorm:"many2many:goals_intentions;"`
+	Whys []*Why `gorm:"many2many:whys_intentions;"`
 }
 
 func NewStore() Store {
@@ -71,7 +76,7 @@ func (s *Store) GetDailyIntentions(day time.Time) ([]Intention, error) {
 type WhyStatusEnum int
 
 const (
-	Active = iota
+	Active WhyStatusEnum = iota
 	Archived
 	All
 )
@@ -90,9 +95,25 @@ func (s *Store) GetWhys(status WhyStatusEnum) ([]Why, error) {
 	return result, err
 }
 
-func (s *Store) UpsertItems(items []any) error {
+func (s *Store) UpsertWhys(items []Why) error {
 	err := s.db.Clauses(clause.OnConflict{
 		UpdateAll: true,
 	}).Create(&items).Error
+	return err
+}
+
+func (s *Store) DeleteWhys(whys []Why) error {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		for _, why := range whys {
+			var err error
+			if why.ID > 0 {
+				err = s.db.Delete(&why).Error
+			}
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	return err
 }

@@ -2,7 +2,7 @@ package ui
 
 import (
 	"github.com/benhsm/goals/internal/ui/common"
-	goals "github.com/benhsm/goals/internal/ui/goals"
+	whys "github.com/benhsm/goals/internal/ui/whys"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -24,12 +24,13 @@ func New() Model {
 	c := common.NewCommon()
 	result := Model{Common: c}
 	result.pages = make([]tea.Model, 4)
-	result.pages[goalsView] = goals.New(c)
+
+	result.pages[goalsView] = whys.New(c)
 	return result
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.pages[goalsView].Init()
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

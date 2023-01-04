@@ -1,4 +1,4 @@
-package goals
+package whys
 
 import (
 	_ "embed"

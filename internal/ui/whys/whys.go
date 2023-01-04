@@ -1,4 +1,4 @@
-package goals
+package whys
 
 import (
 	"fmt"
@@ -29,13 +29,24 @@ var (
 				Padding(0, 0, 0, 0)
 )
 
+type iostateEnum int
+
+const (
+	synced iostateEnum = iota
+	unsynced
+	syncing
+)
+
 type Model struct {
 	common.Common
-	whys       []data.Why
-	focusIndex int
-	input      goalInputModel
-	editing    bool
-	adding     bool
+	whys         []data.Why
+	focusIndex   int
+	input        goalInputModel
+	editing      bool
+	adding       bool
+	iostate      iostateEnum
+	errMessage   string
+	whysToDelete []data.Why
 }
 
 func New(c common.Common) Model {
@@ -45,7 +56,7 @@ func New(c common.Common) Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.ReadWhys(data.Active)
 }
 
 func (m Model) View() string {
@@ -63,6 +74,15 @@ func (m Model) View() string {
 			}
 			b.WriteString("\n\n")
 		}
+		switch m.iostate {
+		case synced:
+			b.WriteString("changes synced to database\n")
+		case unsynced:
+			b.WriteString("Unsaved modifications.\n")
+		case syncing:
+			b.WriteString("syncing with database...\n")
+		}
+		b.WriteString(m.errMessage)
 		return frame.Render(b.String())
 	}
 }
@@ -82,6 +102,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.input.Done {
 			m.editing = false
 			if !m.input.Cancelled {
+				m.iostate = unsynced
 				if m.adding {
 					newGoal := data.Why{
 						Name:        m.input.TitleInput.Value(),
@@ -101,6 +122,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	} else {
 		switch msg := msg.(type) {
+		case common.ErrMsg:
+			if msg.Error != nil {
+				m.errMessage = msg.Error.Error()
+			} else {
+				return m, m.ReadWhys(data.All)
+			}
+		case common.WhyDataMsg:
+			if msg.Error != nil {
+				m.errMessage = msg.Error.Error()
+			}
+			m.whys = msg.Data
+			m.iostate = synced
 		case tea.WindowSizeMsg:
 			m.SetSize(msg.Height, msg.Width)
 		case tea.KeyMsg:
@@ -124,7 +157,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.focusIndex++
 					}
 				case "d":
+					m.whysToDelete = append(m.whysToDelete, m.whys[m.focusIndex])
 					m.whys = removeItemFromSlice(m.whys, m.focusIndex)
+					m.iostate = unsynced
 				case "a", "e":
 					m.editing = true
 					m.input = newGoalInput()
@@ -138,6 +173,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.adding = true
 					}
 					return m, initCmd
+				case "s":
+					if m.iostate == unsynced {
+						cmd = m.UpsertWhys(m.whys)
+						cmds = append(cmds, cmd)
+						cmd = m.DeleteWhys(m.whysToDelete)
+						cmds = append(cmds, cmd)
+						m.iostate = syncing
+					}
+				case "r":
+					return m, m.ReadWhys(data.All)
 				}
 			}
 		}

@@ -26,7 +26,7 @@ func (c *Common) SetSize(height, width int) {
 	c.Height = height
 }
 
-type ErrMsg struct{ err error }
+type ErrMsg struct{ Error error }
 
 type WhyDataMsg struct {
 	Data  []data.Why
@@ -40,5 +40,19 @@ func (c *Common) ReadWhys(filter data.WhyStatusEnum) tea.Cmd {
 			Data:  res,
 			Error: err,
 		}
+	}
+}
+
+func (c *Common) UpsertWhys(whys []data.Why) tea.Cmd {
+	return func() tea.Msg {
+		err := c.Store.UpsertWhys(whys)
+		return ErrMsg{err}
+	}
+}
+
+func (c *Common) DeleteWhys(whys []data.Why) tea.Cmd {
+	return func() tea.Msg {
+		err := c.Store.DeleteWhys(whys)
+		return ErrMsg{err}
 	}
 }

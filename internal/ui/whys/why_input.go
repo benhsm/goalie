@@ -1,6 +1,6 @@
 // Package goalinput provides an application specific Bubble Tea UI component
 // for adding or editing goals
-package goals
+package whys
 
 import (
 	"math/rand"
