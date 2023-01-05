@@ -1,7 +1,6 @@
 package whys
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -14,7 +13,6 @@ import (
 const banner = `░█▀█░█▀▀░▀█▀░▀█▀░█░█░█▀▀░░░█▀▀░█▀█░█▀█░█░░░█▀▀
 ░█▀█░█░░░░█░░░█░░▀▄▀░█▀▀░░░█░█░█░█░█▀█░█░░░▀▀█
 ░▀░▀░▀▀▀░░▀░░▀▀▀░░▀░░▀▀▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀
-
 `
 
 var (
@@ -24,19 +22,25 @@ var (
 			Foreground(lipgloss.Color("#FFFFFF")).
 			Width(80).
 			Height(2).
-			Padding(0, 0, 0, 4)
+			Margin(0, 0, 0, 1).
+			Padding(0, 0, 0, 1)
 	}
 	titleStyle = func(color lipgloss.Color) lipgloss.Style {
 		return lipgloss.NewStyle().
 			Background(color).
 			Foreground(lipgloss.Color("#FFFFFF")).
 			Bold(true).Padding(0, 0, 0, 1).
+			Margin(0, 0, 0, 1).
 			Width(80)
 	}
 	listItemStyle         = lipgloss.NewStyle().Padding(0, 0, 0, 1)
 	selectedlistItemStyle = listItemStyle.Copy().
 				Border(lipgloss.NormalBorder(), false, false, false, true).
 				Padding(0, 0, 0, 0)
+	prefixStyle = func(color lipgloss.Color) lipgloss.Style {
+		return lipgloss.NewStyle().
+			Foreground(lipgloss.Color(color))
+	}
 )
 
 type iostateEnum int
@@ -75,12 +79,14 @@ func (m Model) View() string {
 	if m.editing {
 		return m.input.View()
 	} else {
-		b.WriteString(banner)
 		for i, g := range m.whys {
+			listItem := m.WhyRender(g, strconv.Itoa(i+1))
 			if i == m.focusIndex {
-				b.WriteString(selectedlistItemStyle.Render(WhyRender(g, strconv.Itoa(i+1))))
+				b.WriteString(selectedlistItemStyle.
+					Render(listItem))
 			} else {
-				b.WriteString(listItemStyle.Render(WhyRender(g, strconv.Itoa(i+1))))
+				b.WriteString(listItemStyle.
+					Render(listItem))
 			}
 			b.WriteString("\n\n")
 		}
@@ -93,15 +99,21 @@ func (m Model) View() string {
 			b.WriteString("syncing with database...\n")
 		}
 		b.WriteString(m.errMessage)
-		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, docStyle.Render(b.String()))
+		final := lipgloss.JoinVertical(lipgloss.Center, banner, b.String())
+		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, docStyle.Render(final))
 	}
 }
 
-func WhyRender(w data.Why, prefix string) string {
-	contents := fmt.Sprintf("%s) %s", prefix, w.Name)
-	title := titleStyle(w.Color).Render(contents)
+func (m *Model) WhyRender(w data.Why, prefix string) string {
+	m.FigletOpts.FontName = "future"
+	// TODO: This won't work with non-ascii prefixes
+	bigPrefix, _ := m.Figlet.RenderOpts(prefix, m.FigletOpts)
+	bigPrefix = strings.TrimRight(bigPrefix, "\n")
+	title := titleStyle(w.Color).Render(w.Name)
 	desc := descriptionStyle(w.Color).Render(w.Description)
-	return title + "\n" + desc
+	contents := lipgloss.JoinVertical(lipgloss.Left, title, desc)
+	result := lipgloss.JoinHorizontal(lipgloss.Center, prefixStyle(w.Color).Render(bigPrefix), contents)
+	return result
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
