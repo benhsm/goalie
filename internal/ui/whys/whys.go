@@ -52,7 +52,7 @@ const (
 )
 
 type Model struct {
-	common.Common
+	common       common.Common
 	whys         []data.Why
 	focusIndex   int
 	input        goalInputModel
@@ -61,19 +61,21 @@ type Model struct {
 	iostate      iostateEnum
 	errMessage   string
 	whysToDelete []data.Why
+	height       int
+	width        int
 }
 
-func New(c common.Common) Model {
-	return Model{
-		Common: c,
+func New(c common.Common) *Model {
+	return &Model{
+		common: c,
 	}
 }
 
-func (m Model) Init() tea.Cmd {
-	return m.ReadWhys(data.Active)
+func (m *Model) Init() tea.Cmd {
+	return m.common.ReadWhys(data.Active)
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	var b strings.Builder
 
 	if m.editing {
@@ -100,14 +102,14 @@ func (m Model) View() string {
 		}
 		b.WriteString(m.errMessage)
 		final := lipgloss.JoinVertical(lipgloss.Center, banner, b.String())
-		return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center, docStyle.Render(final))
+		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, docStyle.Render(final))
 	}
 }
 
 func (m *Model) WhyRender(w data.Why, prefix string) string {
-	m.FigletOpts.FontName = "future"
+	m.common.FigletOpts.FontName = "future"
 	// TODO: This won't work with non-ascii prefixes
-	bigPrefix, _ := m.Figlet.RenderOpts(prefix, m.FigletOpts)
+	bigPrefix, _ := m.common.Figlet.RenderOpts(prefix, m.common.FigletOpts)
 	bigPrefix = strings.TrimRight(bigPrefix, "\n")
 	title := titleStyle(w.Color).Render(w.Name)
 	desc := descriptionStyle(w.Color).Render(w.Description)
@@ -116,7 +118,7 @@ func (m *Model) WhyRender(w data.Why, prefix string) string {
 	return result
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
@@ -149,7 +151,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Error != nil {
 				m.errMessage = msg.Error.Error()
 			} else {
-				return m, m.ReadWhys(data.All)
+				return m, m.common.ReadWhys(data.All)
 			}
 		case common.WhyDataMsg:
 			if msg.Error != nil {
@@ -186,7 +188,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "a", "e":
 					m.editing = true
 					m.input = newGoalInput()
-					m.input.SetSize(m.Height, m.Width)
+					m.input.SetSize(m.height, m.width)
 					initCmd := m.input.Init()
 					if string(msg.Runes) == "e" {
 						m.input.TitleInput.SetValue(m.whys[m.focusIndex].Name)
@@ -198,14 +200,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, initCmd
 				case "s":
 					if m.iostate == unsynced {
-						cmd = m.UpsertWhys(m.whys)
+						cmd = m.common.UpsertWhys(m.whys)
 						cmds = append(cmds, cmd)
-						cmd = m.DeleteWhys(m.whysToDelete)
+						cmd = m.common.DeleteWhys(m.whysToDelete)
 						cmds = append(cmds, cmd)
 						m.iostate = syncing
 					}
 				case "r":
-					return m, m.ReadWhys(data.All)
+					return m, m.common.ReadWhys(data.All)
 				}
 			}
 		}
@@ -219,6 +221,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, tea.Batch(cmds...)
 	}
+}
+
+func (m *Model) SetSize(height, width int) {
+	m.height = height
+	m.width = width
 }
 
 // Remove an item from a slice of items at the given index. This runs in O(n).

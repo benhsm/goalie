@@ -12,6 +12,11 @@ import (
 //go:embed future.tlf
 var fontFuture []byte
 
+type Component interface {
+	tea.Model
+	SetSize(height, width int)
+}
+
 // Common is a struct all components should embed
 type Common struct {
 	Width      int

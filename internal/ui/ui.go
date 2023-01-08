@@ -2,43 +2,87 @@ package ui
 
 import (
 	"github.com/benhsm/goals/internal/ui/common"
+	"github.com/benhsm/goals/internal/ui/today"
 	whys "github.com/benhsm/goals/internal/ui/whys"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-const (
-	goalsView = iota
+type page int
 
-// todayPage
+const (
+	todayPage page = iota
+	whysPage
+
 // reviewsPage
 )
 
 // Model is the main UI model
 type Model struct {
 	common.Common
-	pages []tea.Model
-	state int
+	pages      []common.Component
+	activePage page
 }
 
 func New() Model {
 	c := common.NewCommon()
 	result := Model{Common: c}
-	result.pages = make([]tea.Model, 4)
+	result.pages = make([]common.Component, 4)
 
-	result.pages[goalsView] = whys.New(c)
+	result.pages[whysPage] = whys.New(c)
+	result.pages[todayPage] = today.New(c)
 	return result
 }
 
 func (m Model) Init() tea.Cmd {
-	return m.pages[goalsView].Init()
+	var cmds []tea.Cmd
+	var cmd tea.Cmd
+
+	cmd = m.pages[whysPage].Init()
+	cmds = append(cmds, cmd)
+
+	cmd = m.pages[todayPage].Init()
+	cmds = append(cmds, cmd)
+
+	return tea.Batch(cmds...)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	m.pages[m.state], cmd = m.pages[m.state].Update(msg)
-	return m, cmd
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.SetSize(msg.Height, msg.Width)
+		for _, p := range m.pages {
+			if p != nil {
+				p.SetSize(msg.Height, msg.Width)
+			}
+		}
+	case common.WhyDataMsg:
+		p, cmd := m.pages[whysPage].Update(msg)
+		m.pages[whysPage] = p.(common.Component)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case tea.KeyMsg:
+		if msg.String() == "f1" {
+			m.activePage = whysPage
+			cmd := m.pages[m.activePage].Init()
+			cmds = append(cmds, cmd)
+		}
+		if msg.String() == "f2" {
+			m.activePage = todayPage
+			cmd := m.pages[m.activePage].Init()
+			cmds = append(cmds, cmd)
+		}
+	}
+	pageModel, cmd := m.pages[m.activePage].Update(msg)
+	m.pages[m.activePage] = pageModel.(common.Component)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
-	return m.pages[m.state].View()
+	return m.pages[m.activePage].View()
 }
