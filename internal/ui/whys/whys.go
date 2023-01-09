@@ -1,6 +1,7 @@
 package whys
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -157,6 +158,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Error != nil {
 				m.errMessage = msg.Error.Error()
 			}
+			sort.Slice(msg.Data, func(i, j int) bool {
+				return msg.Data[i].Number < msg.Data[j].Number
+			})
 			m.whys = msg.Data
 			m.iostate = synced
 		case tea.WindowSizeMsg:
@@ -176,11 +180,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.whys[m.focusIndex-1], m.whys[m.focusIndex] = m.whys[m.focusIndex], m.whys[m.focusIndex-1]
 						m.focusIndex--
 					}
+					m.iostate = unsynced
 				case "J":
 					if m.focusIndex < len(m.whys)-1 {
 						m.whys[m.focusIndex+1], m.whys[m.focusIndex] = m.whys[m.focusIndex], m.whys[m.focusIndex+1]
 						m.focusIndex++
 					}
+					m.iostate = unsynced
 				case "d":
 					m.whysToDelete = append(m.whysToDelete, m.whys[m.focusIndex])
 					m.whys = removeItemFromSlice(m.whys, m.focusIndex)
@@ -200,6 +206,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, initCmd
 				case "s":
 					if m.iostate == unsynced {
+						for i := range m.whys {
+							m.whys[i].Number = i + 1
+						}
 						cmd = m.common.UpsertWhys(m.whys)
 						cmds = append(cmds, cmd)
 						cmd = m.common.DeleteWhys(m.whysToDelete)
