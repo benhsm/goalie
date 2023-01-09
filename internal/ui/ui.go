@@ -26,7 +26,7 @@ type Model struct {
 func New() Model {
 	c := common.NewCommon()
 	result := Model{Common: c}
-	result.pages = make([]common.Component, 4)
+	result.pages = make([]common.Component, 2)
 
 	result.pages[whysPage] = whys.New(c)
 	result.pages[todayPage] = today.New(c)
@@ -58,10 +58,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case common.WhyDataMsg:
-		p, cmd := m.pages[whysPage].Update(msg)
-		m.pages[whysPage] = p.(common.Component)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
+		// All pages need to be updated with current whys
+		for page := range m.pages {
+			p, cmd := m.pages[page].Update(msg)
+			m.pages[page] = p.(common.Component)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
 	case tea.KeyMsg:
 		if msg.String() == "f1" {

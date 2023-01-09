@@ -5,12 +5,22 @@ import (
 
 	"github.com/benhsm/goals/internal/data"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/mbndr/figlet4go"
 )
 
 //go:embed future.tlf
 var fontFuture []byte
+
+var (
+	WhyBadgeStyle = func(color lipgloss.Color) lipgloss.Style {
+		return lipgloss.NewStyle().Background(color).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Padding(0, 1, 0, 1).
+			Margin(0, 1, 0, 0).Bold(true)
+	}
+)
 
 type Component interface {
 	tea.Model

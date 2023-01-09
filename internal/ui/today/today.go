@@ -37,7 +37,7 @@ const (
 func New(c common.Common) *Model {
 	return &Model{
 		Common:    c,
-		date:      time.Now(),
+		date:      getCurrentDay(),
 		inputPage: newInputModel(c),
 		//		todayPage:    newTodaymodel(),
 		//		outcomesPage: newReflectModel(),
@@ -56,6 +56,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Height, msg.Width)
 
+	case common.WhyDataMsg:
+		if msg.Data != nil {
+			m.inputPage.whys = msg.Data
+		}
 	}
 
 	if msg, ok := msg.(tea.KeyMsg); ok {
@@ -88,4 +92,14 @@ func (m Model) View() string {
 func (m *Model) SetSize(height, width int) {
 	m.height = height
 	m.width = width
+}
+
+func getCurrentDay() time.Time {
+	now := time.Now().Local()
+
+	// For our purposes, the day is considered to begin/end at 4:00AM
+	if now.Hour() < 4 {
+		now = now.AddDate(0, 0, -1)
+	}
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 }
