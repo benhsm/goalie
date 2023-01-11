@@ -38,21 +38,24 @@ type activePage int
 
 const (
 	inputActive activePage = iota
+	loading
 	todayActive
 	outcomesActive
 )
 
 func New(c common.Common) *Model {
 	return &Model{
-		Common:    c,
-		date:      getCurrentDay(),
-		inputPage: newInputModel(c),
-		todayPage: newTodayModel(c),
-		//		outcomesPage: newReflectModel(),
+		Common: c,
+		date:   getCurrentDay(),
 	}
 }
 
 func (m *Model) Init() tea.Cmd {
+	m.inputPage = newInputModel(m.Common)
+	m.todayPage = newTodayModel(m.Common)
+	//		m.outcomesPage = newReflectModel(m.Common)
+	m.inputPage.whys = &m.whys
+	m.todayPage.whys = &m.whys
 	return m.inputPage.Init()
 }
 
@@ -67,8 +70,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case common.WhyDataMsg:
 		if msg.Data != nil {
 			m.whys = msg.Data
-			m.inputPage.whys = &m.whys
-			m.todayPage.whys = &m.whys
 		}
 	}
 
@@ -88,13 +89,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				m.inputPage.finished = false
 			} else {
-				m.todayPage.intentions = parsedIntentions
+				// TODO: this will need to change when the UI is actually connected
+				// to the datalayer
+				m.todayPage.intentions =
+					append(m.todayPage.intentions, parsedIntentions...)
+				m.todayPage.adding = false
 				m.state = todayActive
 			}
 		}
 	case todayActive:
 		m.todayPage, cmd = m.todayPage.Update(msg)
 		cmds = append(cmds, cmd)
+		if m.todayPage.adding {
+			m.inputPage = newInputModel(m.Common)
+			m.inputPage.whys = &m.whys
+			m.state = inputActive
+			cmd = m.inputPage.Init()
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return m, tea.Batch(cmds...)

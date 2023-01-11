@@ -61,6 +61,7 @@ type todayModel struct {
 	input      textinput.Model
 
 	focusIndex int
+	adding     bool
 
 	height int
 	width  int
@@ -106,6 +107,8 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 			m.intentions[m.focusIndex].Cancelled = !m.intentions[m.focusIndex].Cancelled
 		case "space", "enter":
 			m.intentions[m.focusIndex].Done = !m.intentions[m.focusIndex].Done
+		case "a":
+			m.adding = true
 		}
 	}
 
