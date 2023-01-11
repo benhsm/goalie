@@ -1,7 +1,9 @@
 package today
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +13,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	promptStyle = lipgloss.NewStyle().Bold(true)
+	badgeStyle  = lipgloss.NewStyle().Margin(1, 0)
+	inputStyle  = lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true)
+)
+
 type Model struct {
 	common.Common
 	whys       []data.Why
@@ -18,7 +26,7 @@ type Model struct {
 
 	date         time.Time
 	inputPage    inputModel
-	todayPage    tea.Model
+	todayPage    todayModel
 	outcomesPage tea.Model
 	state        activePage
 
@@ -39,7 +47,7 @@ func New(c common.Common) *Model {
 		Common:    c,
 		date:      getCurrentDay(),
 		inputPage: newInputModel(c),
-		//		todayPage:    newTodaymodel(),
+		todayPage: newTodayModel(c),
 		//		outcomesPage: newReflectModel(),
 	}
 }
@@ -58,7 +66,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case common.WhyDataMsg:
 		if msg.Data != nil {
-			m.inputPage.whys = msg.Data
+			m.whys = msg.Data
+			m.inputPage.whys = &m.whys
+			m.todayPage.whys = &m.whys
 		}
 	}
 
@@ -72,6 +82,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case inputActive:
 		m.inputPage, cmd = m.inputPage.Update(msg)
 		cmds = append(cmds, cmd)
+		if m.inputPage.finished {
+			input := m.inputPage.textInput.Value()
+			parsedIntentions, err := parseIntentions(m.whys, input)
+			if err != nil {
+				m.inputPage.finished = false
+			} else {
+				m.todayPage.intentions = parsedIntentions
+				m.state = todayActive
+			}
+		}
+	case todayActive:
+		m.todayPage, cmd = m.todayPage.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -82,9 +105,14 @@ func (m Model) View() string {
 
 	year, month, day := m.date.Date()
 	weekday := m.date.Weekday().String()
-	fmt.Fprintf(&s, "%s %d, %s %d\n\n", weekday, day, month.String(), year)
+	fmt.Fprintf(&s, "%s %d, %s %d\n", weekday, day, month.String(), year)
 
-	s.WriteString(m.inputPage.View())
+	switch m.state {
+	case inputActive:
+		s.WriteString(m.inputPage.View())
+	case todayActive:
+		s.WriteString(m.todayPage.View())
+	}
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, s.String())
 }
@@ -102,4 +130,51 @@ func getCurrentDay() time.Time {
 		now = now.AddDate(0, 0, -1)
 	}
 	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+}
+
+func parseIntentions(whys []data.Why, input string) ([]data.Intention, error) {
+	var results []data.Intention
+
+	lines := strings.Split(input, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue // discard blank lines
+		}
+		intention := data.Intention{}
+		intention.Content = line
+		prefix, _, found := strings.Cut(line, ")")
+		if !found {
+			return nil, errors.New("No goal prefix")
+		}
+		codes := strings.Split(prefix, ",")
+		for _, c := range codes {
+			whyNum, err := strconv.Atoi(string(c))
+			if err != nil || !(whyNum-1 >= 0 && whyNum-1 <= len(whys)-1) {
+				return nil, errors.New("Invalid goal code")
+			}
+			intention.Whys = append(intention.Whys, &whys[whyNum-1])
+		}
+		results = append(results, intention)
+	}
+	return results, nil
+}
+
+func whyBadges(whys []data.Why) string {
+	var lines []string
+	var line strings.Builder
+	for i, why := range whys {
+		prefix := strconv.Itoa(i+1) + " "
+		whyTitle := prefix + why.Name
+		// need to use lipgloss.Width here to avoid counting the escape sequences
+		if lipgloss.Width(line.String()+whyTitle) > 70 {
+			lines = append(lines, line.String())
+			line.Reset()
+		}
+		line.WriteString(common.WhyBadgeStyle(why.Color).Render((whyTitle)))
+	}
+	if line.Len() != 0 {
+		lines = append(lines, line.String())
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
