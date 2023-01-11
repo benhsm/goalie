@@ -2,6 +2,7 @@ package common
 
 import (
 	_ "embed"
+	"sort"
 
 	"github.com/benhsm/goals/internal/data"
 	tea "github.com/charmbracelet/bubbletea"
@@ -67,6 +68,9 @@ type WhyDataMsg struct {
 func (c *Common) ReadWhys(filter data.WhyStatusEnum) tea.Cmd {
 	return func() tea.Msg {
 		res, err := c.Store.GetWhys(filter)
+		sort.Slice(res, func(i, j int) bool {
+			return res[i].Number < res[j].Number
+		})
 		return WhyDataMsg{
 			Data:  res,
 			Error: err,

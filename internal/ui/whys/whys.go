@@ -1,7 +1,6 @@
 package whys
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 
@@ -136,13 +135,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Color:       m.input.Color,
 					}
 					m.whys = append(m.whys, newGoal)
-					m.adding = false
 				} else {
 					m.whys[m.focusIndex].Name = m.input.TitleInput.Value()
 					m.whys[m.focusIndex].Description = m.input.DescInput.Value()
 					m.whys[m.focusIndex].Color = m.input.Color
 				}
 			}
+			m.adding = false
 			m.input = goalInputModel{}
 		}
 		return m, cmd
@@ -158,9 +157,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Error != nil {
 				m.errMessage = msg.Error.Error()
 			}
-			sort.Slice(msg.Data, func(i, j int) bool {
-				return msg.Data[i].Number < msg.Data[j].Number
-			})
 			m.whys = msg.Data
 			m.iostate = synced
 		case tea.WindowSizeMsg:
