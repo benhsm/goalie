@@ -27,7 +27,7 @@ type Model struct {
 	date         time.Time
 	inputPage    inputModel
 	todayPage    todayModel
-	outcomesPage tea.Model
+	outcomesPage outcomeModel
 	state        activePage
 
 	height int
@@ -53,7 +53,6 @@ func New(c common.Common) *Model {
 func (m *Model) Init() tea.Cmd {
 	m.inputPage = newInputModel(m.Common)
 	m.todayPage = newTodayModel(m.Common)
-	//		m.outcomesPage = newReflectModel(m.Common)
 	m.inputPage.whys = &m.whys
 	m.todayPage.whys = &m.whys
 	return m.inputPage.Init()
@@ -93,6 +92,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// to the datalayer
 				m.todayPage.intentions =
 					append(m.todayPage.intentions, parsedIntentions...)
+				m.intentions = m.todayPage.intentions
 				m.todayPage.adding = false
 				m.state = todayActive
 			}
@@ -107,6 +107,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = m.inputPage.Init()
 			cmds = append(cmds, cmd)
 		}
+		if m.todayPage.finished {
+			m.state = outcomesActive
+			m.outcomesPage = newOutcomeModel(m.Common, m.whys, m.intentions)
+		}
+	case outcomesActive:
+		m.outcomesPage, cmd = m.outcomesPage.Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -124,6 +131,8 @@ func (m Model) View() string {
 		s.WriteString(m.inputPage.View())
 	case todayActive:
 		s.WriteString(m.todayPage.View())
+	case outcomesActive:
+		s.WriteString(m.outcomesPage.View())
 	}
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, s.String())
@@ -162,10 +171,10 @@ func parseIntentions(whys []data.Why, input string) ([]data.Intention, error) {
 		codes := strings.Split(prefix, ",")
 		for _, c := range codes {
 			whyNum, err := strconv.Atoi(string(c))
-			if err != nil || !(whyNum-1 >= 0 && whyNum-1 <= len(whys)-1) {
+			if err != nil || !(whyNum >= 0 && whyNum <= len(whys)-1) {
 				return nil, errors.New("Invalid goal code")
 			}
-			intention.Whys = append(intention.Whys, &whys[whyNum-1])
+			intention.Whys = append(intention.Whys, &whys[whyNum])
 		}
 		results = append(results, intention)
 	}
@@ -176,7 +185,7 @@ func whyBadges(whys []data.Why) string {
 	var lines []string
 	var line strings.Builder
 	for i, why := range whys {
-		prefix := strconv.Itoa(i+1) + " "
+		prefix := strconv.Itoa(i) + " "
 		whyTitle := prefix + why.Name
 		// need to use lipgloss.Width here to avoid counting the escape sequences
 		if lipgloss.Width(line.String()+whyTitle) > 70 {

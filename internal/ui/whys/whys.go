@@ -82,7 +82,7 @@ func (m *Model) View() string {
 		return m.input.View()
 	} else {
 		for i, g := range m.whys {
-			listItem := m.WhyRender(g, strconv.Itoa(i+1))
+			listItem := m.WhyRender(g, strconv.Itoa(i))
 			if i == m.focusIndex {
 				b.WriteString(selectedlistItemStyle.
 					Render(listItem))
@@ -203,7 +203,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "s":
 					if m.iostate == unsynced {
 						for i := range m.whys {
-							m.whys[i].Number = i + 1
+							m.whys[i].Number = i
 						}
 						cmd = m.common.UpsertWhys(m.whys)
 						cmds = append(cmds, cmd)

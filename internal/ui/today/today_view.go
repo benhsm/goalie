@@ -11,6 +11,7 @@ import (
 var (
 	listBoxStyle = lipgloss.NewStyle().
 			Height(10).
+			Width(50).
 			Border(lipgloss.RoundedBorder(), true).
 			Margin(1, 0, 0, 0)
 	checkmark = lipgloss.NewStyle().SetString("✓").
@@ -62,6 +63,7 @@ type todayModel struct {
 
 	focusIndex int
 	adding     bool
+	finished   bool
 
 	height int
 	width  int
@@ -109,6 +111,8 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 			m.intentions[m.focusIndex].Done = !m.intentions[m.focusIndex].Done
 		case "a":
 			m.adding = true
+		case "ctrl+d":
+			m.finished = true
 		}
 	}
 
