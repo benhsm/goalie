@@ -172,7 +172,10 @@ func parseIntentions(whys []data.Why, input string) ([]data.Intention, error) {
 		for _, c := range codes {
 			whyNum, err := strconv.Atoi(string(c))
 			if err != nil || !(whyNum >= 0 && whyNum <= len(whys)-1) {
-				return nil, errors.New("Invalid goal code")
+				// we have a non-number; treat this as an intention without an associated goal
+				// TODO: will have to rework this later archived goal codes
+				intention.Whys = nil
+				break
 			}
 			intention.Whys = append(intention.Whys, &whys[whyNum])
 		}
