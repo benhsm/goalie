@@ -39,6 +39,7 @@ type outcomeSection struct {
 	intentions []data.Intention
 	enough     bool
 	reflection string
+	addInput   textinput.Model
 	input      textinput.Model
 }
 
@@ -85,6 +86,10 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 				m.focusIndex = outcomesFocus
 			}
 
+			if m.sections[m.sectionIndex].addInput.Focused() {
+				m.sections[m.sectionIndex].addInput.Blur()
+			}
+
 			if m.focusIndex == reflectFocus {
 				cmd = m.sections[m.sectionIndex].input.Focus()
 				cmds = append(cmds, cmd)
@@ -93,36 +98,62 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 			}
 
 			return m, tea.Batch(cmds...)
+		case tea.KeyEsc:
+			if m.sections[m.sectionIndex].addInput.Focused() {
+				m.sections[m.sectionIndex].addInput.Blur()
+			}
 		}
 
 		// component specific keys
 		switch m.focusIndex {
 		case outcomesFocus:
-			switch msg.Type {
-			case tea.KeyEnter, tea.KeySpace:
-				if m.sections[m.sectionIndex].intentions != nil {
-					m.sections[m.sectionIndex].intentions[m.outcomeIndex].Done =
-						!m.sections[m.sectionIndex].intentions[m.outcomeIndex].Done
+			if m.sections[m.sectionIndex].addInput.Focused() {
+				switch msg.Type {
+				case tea.KeyEnter:
+					why := m.sections[m.sectionIndex].why
+					content := fmt.Sprintf("%d) %s", why.Number, m.sections[m.sectionIndex].addInput.Value())
+					newIntention := data.Intention{
+						Whys:       []*data.Why{why},
+						Content:    content,
+						Unintended: true,
+						Done:       true,
+					}
+					m.sections[m.sectionIndex].addInput.Reset()
+					m.sections[m.sectionIndex].intentions =
+						append(m.sections[m.sectionIndex].intentions, newIntention)
+					m.sections[m.sectionIndex].addInput.Blur()
 				}
-			case tea.KeyBackspace:
-				if m.sections[m.sectionIndex].intentions != nil {
-					m.sections[m.sectionIndex].intentions[m.outcomeIndex].Cancelled =
-						!m.sections[m.sectionIndex].intentions[m.outcomeIndex].Cancelled
-				}
-			case tea.KeyRunes:
-				switch msg.String() {
-				case "j":
-					m.outcomeIndex++
-				case "k":
-					m.outcomeIndex--
-				case "l":
-					m.sectionIndex++
-				case "h":
-					m.sectionIndex--
-				case "y":
-					m.sections[m.sectionIndex].enough = true
-				case "n":
-					m.sections[m.sectionIndex].enough = false
+			} else {
+				switch msg.Type {
+				case tea.KeyEnter, tea.KeySpace:
+					if m.sections[m.sectionIndex].intentions != nil {
+						m.sections[m.sectionIndex].intentions[m.outcomeIndex].Done =
+							!m.sections[m.sectionIndex].intentions[m.outcomeIndex].Done
+					}
+				case tea.KeyBackspace:
+					if m.sections[m.sectionIndex].intentions != nil {
+						m.sections[m.sectionIndex].intentions[m.outcomeIndex].Cancelled =
+							!m.sections[m.sectionIndex].intentions[m.outcomeIndex].Cancelled
+					}
+				case tea.KeyRunes:
+					switch msg.String() {
+					case "j":
+						m.outcomeIndex++
+					case "k":
+						m.outcomeIndex--
+					case "l":
+						m.sectionIndex++
+					case "h":
+						m.sectionIndex--
+					case "y":
+						m.sections[m.sectionIndex].enough = true
+					case "n":
+						m.sections[m.sectionIndex].enough = false
+					case "a":
+						cmd := m.sections[m.sectionIndex].addInput.Focus()
+						cmds = append(cmds, cmd)
+						return m, tea.Batch(cmds...)
+					}
 				}
 			}
 		}
@@ -148,6 +179,9 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 		// each input model will only respond if focused,
 		// so we can update all of them
 		m.sections[i].input, cmd = m.sections[i].input.Update(msg)
+		cmds = append(cmds, cmd)
+
+		m.sections[i].addInput, cmd = m.sections[i].addInput.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -175,7 +209,7 @@ func (m outcomeModel) View() string {
 			s = append(s, renderedIntention)
 		}
 	}
-	s = append(s, " +")
+	s = append(s, m.sections[m.sectionIndex].addInput.View())
 	//	m.sections[m.sectionIndex].input.PromptStyle.Background(why.Color)
 	//	m.sections[m.sectionIndex].input.TextStyle.Background(why.Color).Border(lipgloss.NormalBorder(), true)
 	//	m.sections[m.sectionIndex].input.BackgroundStyle.Background(why.Color)
@@ -206,14 +240,15 @@ func (m outcomeModel) View() string {
 	rightBox := lipgloss.JoinVertical(lipgloss.Left, title, outcomeBox, enoughLine, inputBox)
 	goalCount := fmt.Sprintf("Goal %d/%d to review", m.sectionIndex+1, len(m.whys))
 	rightBox = lipgloss.JoinVertical(lipgloss.Right, prompt, "", rightBox, goalCount)
+
 	return sectionStyle.Render(rightBox)
 }
 
 func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcomeSection {
 	result := []outcomeSection{}
-	for _, why := range whys {
+	for i, why := range whys {
 		section := outcomeSection{}
-		section.why = &why
+		section.why = &whys[i]
 		for _, intention := range intentions {
 			for _, assocWhy := range intention.Whys {
 				if assocWhy.ID == why.ID {
@@ -222,6 +257,11 @@ func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcome
 				}
 			}
 		}
+		section.addInput = textinput.New()
+		section.addInput.Width = 42
+		section.addInput.Prompt = fmt.Sprintf("[+] %d) ", why.Number)
+		section.addInput.Placeholder = ""
+
 		section.input = textinput.New()
 		section.input.Width = 48
 		section.input.Prompt = ""
