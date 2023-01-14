@@ -66,6 +66,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
+		if len(msg.Data) < 2 {
+			// if there are fewer than, we want to go to the whys page so the
+			// user can add some
+			m.activePage = whysPage
+		}
 	case tea.KeyMsg:
 		if msg.String() == "f1" {
 			m.activePage = whysPage
