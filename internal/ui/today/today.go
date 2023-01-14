@@ -171,11 +171,15 @@ func parseIntentions(whys []data.Why, input string) ([]data.Intention, error) {
 		codes := strings.Split(prefix, ",")
 		for _, c := range codes {
 			whyNum, err := strconv.Atoi(string(c))
-			if err != nil || !(whyNum >= 0 && whyNum <= len(whys)-1) {
+			if err != nil {
 				// we have a non-number; treat this as an intention without an associated goal
 				// TODO: will have to rework this later archived goal codes
 				intention.Whys = nil
 				break
+			}
+			if !(whyNum >= 0 && whyNum <= len(whys)-1) {
+				// goal was a number, but not one that refers to an existing goal
+				return nil, errors.New("invalid goal code")
 			}
 			intention.Whys = append(intention.Whys, &whys[whyNum])
 		}
@@ -192,6 +196,7 @@ func whyBadges(whys []data.Why) string {
 		whyTitle := prefix + why.Name
 		// need to use lipgloss.Width here to avoid counting the escape sequences
 		if lipgloss.Width(line.String()+whyTitle) > 70 {
+			line.WriteString("\n")
 			lines = append(lines, line.String())
 			line.Reset()
 		}

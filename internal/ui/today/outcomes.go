@@ -106,18 +106,35 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 
 		// component specific keys
 		switch m.focusIndex {
+		case reflectFocus:
+			switch msg.Type {
+			case tea.KeyEnter:
+				m.sections[m.sectionIndex].input.Blur()
+				m.sectionIndex++
+				m.focusIndex = outcomesFocus
+			}
 		case outcomesFocus:
 			if m.sections[m.sectionIndex].addInput.Focused() {
 				switch msg.Type {
 				case tea.KeyEnter:
-					why := m.sections[m.sectionIndex].why
-					content := fmt.Sprintf("%d) %s", why.Number, m.sections[m.sectionIndex].addInput.Value())
-					newIntention := data.Intention{
-						Whys:       []*data.Why{why},
-						Content:    content,
-						Unintended: true,
-						Done:       true,
+					var why *data.Why
+					var content string
+					var newIntention data.Intention
+
+					if m.sections[m.sectionIndex].why != nil {
+						why = m.sections[m.sectionIndex].why
+						content = fmt.Sprintf("%d) %s", why.Number, m.sections[m.sectionIndex].addInput.Value())
+						newIntention = data.Intention{
+							Whys: []*data.Why{why},
+						}
+					} else {
+						content = fmt.Sprintf("&) %s", m.sections[m.sectionIndex].addInput.Value())
+						newIntention = data.Intention{}
 					}
+					newIntention.Content = content
+					newIntention.Unintended = true
+					newIntention.Done = true
+
 					m.sections[m.sectionIndex].addInput.Reset()
 					m.sections[m.sectionIndex].intentions =
 						append(m.sections[m.sectionIndex].intentions, newIntention)
@@ -190,9 +207,23 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 
 func (m outcomeModel) View() string {
 	prompt := promptStyle.Render("Reflect on what you did towards your goals today.")
-	why := m.whys[m.sectionIndex]
-	number := strconv.Itoa(why.Number)
-	title := titleStyle(why.Color).Render(number + " " + why.Name)
+
+	var why *data.Why
+	var prefix string
+	var color lipgloss.Color
+	var name string
+	if m.sections[m.sectionIndex].why != nil {
+		why = m.sections[m.sectionIndex].why
+		prefix = strconv.Itoa(why.Number)
+		color = why.Color
+		name = why.Name
+	} else {
+		prefix = "&"
+		color = lipgloss.Color("#808080")
+		name = "MISC"
+	}
+
+	title := titleStyle(color).Render(prefix + " " + name)
 	var s []string
 	for i, intention := range m.sections[m.sectionIndex].intentions {
 		var renderedIntention string
@@ -215,7 +246,7 @@ func (m outcomeModel) View() string {
 	//	m.sections[m.sectionIndex].input.BackgroundStyle.Background(why.Color)
 	//	m.sections[m.sectionIndex].input.PlaceholderStyle.Background(why.Color)
 	inputBox := lipgloss.NewStyle().
-		BorderForeground(why.Color).
+		BorderForeground(color).
 		Border(lipgloss.RoundedBorder(), true).
 		Width(50).
 		Padding(0, 0, 0, 1).
@@ -223,7 +254,7 @@ func (m outcomeModel) View() string {
 
 	enoughLine := lipgloss.JoinHorizontal(lipgloss.Center,
 		"Is this enough? ", "<==")
-	enoughLine = lipgloss.NewStyle().Foreground(why.Color).Render(enoughLine)
+	enoughLine = lipgloss.NewStyle().Foreground(color).Render(enoughLine)
 	if m.sections[m.sectionIndex].enough {
 		enoughLine = lipgloss.JoinHorizontal(lipgloss.Center,
 			enoughLine, " ["+checkmark+"]")
@@ -234,11 +265,11 @@ func (m outcomeModel) View() string {
 
 	outcomeBox := lipgloss.JoinVertical(lipgloss.Left, s...)
 	outcomeBox = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true).
-		BorderForeground(why.Color).
+		BorderForeground(color).
 		Width(50).
 		Render(outcomeBox)
 	rightBox := lipgloss.JoinVertical(lipgloss.Left, title, outcomeBox, enoughLine, inputBox)
-	goalCount := fmt.Sprintf("Goal %d/%d to review", m.sectionIndex+1, len(m.whys))
+	goalCount := fmt.Sprintf("Page %d/%d to review", m.sectionIndex+1, len(m.sections))
 	rightBox = lipgloss.JoinVertical(lipgloss.Right, prompt, "", rightBox, goalCount)
 
 	return sectionStyle.Render(rightBox)
@@ -268,6 +299,24 @@ func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcome
 		section.input.Placeholder = "say more..."
 		result = append(result, section)
 	}
+
+	miscSection := outcomeSection{}
+	for _, intention := range intentions {
+		if intention.Whys == nil {
+			miscSection.intentions = append(miscSection.intentions, intention)
+		}
+	}
+	miscSection.addInput = textinput.New()
+	miscSection.addInput.Width = 42
+	miscSection.addInput.Prompt = "[+] &) "
+	miscSection.addInput.Placeholder = ""
+
+	miscSection.input = textinput.New()
+	miscSection.input.Width = 48
+	miscSection.input.Prompt = ""
+	miscSection.input.Placeholder = "overall remarks for today"
+	result = append(result, miscSection)
+
 	if len(result) == 0 {
 		panic("empty")
 	}
