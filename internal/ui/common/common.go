@@ -3,6 +3,7 @@ package common
 import (
 	_ "embed"
 	"sort"
+	"time"
 
 	"github.com/benhsm/goals/internal/data"
 	tea "github.com/charmbracelet/bubbletea"
@@ -89,5 +90,45 @@ func (c *Common) DeleteWhys(whys []data.Why) tea.Cmd {
 	return func() tea.Msg {
 		err := c.Store.DeleteWhys(whys)
 		return ErrMsg{err}
+	}
+}
+
+type IntentionMsg struct {
+	Yesterday []data.Intention
+	Today     []data.Intention
+	Tomorrow  []data.Intention
+	Error     error
+}
+
+func (c *Common) UpsertIntentions(intentions []data.Intention) tea.Cmd {
+	return func() tea.Msg {
+		err := c.Store.UpsertIntentions(intentions)
+		return ErrMsg{err}
+	}
+}
+
+func (c *Common) GetDaysIntentions(day time.Time) tea.Cmd {
+	var days [3]time.Time
+	days[0] = day.AddDate(0, 0, -1)
+	days[1] = day
+	days[2] = day.AddDate(0, 0, 1)
+	var res [3][]data.Intention
+	return func() tea.Msg {
+		for i := range days {
+			data, err := c.Store.GetDaysIntentions(days[i])
+			if err != nil {
+				return IntentionMsg{Error: err}
+			}
+			sort.Slice(data, func(i, j int) bool {
+				return data[i].Position < data[j].Position
+			})
+			res[i] = data
+		}
+		return IntentionMsg{
+			Yesterday: res[0],
+			Today:     res[1],
+			Tomorrow:  res[2],
+			Error:     nil,
+		}
 	}
 }

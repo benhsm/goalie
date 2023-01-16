@@ -1,6 +1,8 @@
 package today
 
 import (
+	"time"
+
 	"github.com/benhsm/goals/internal/data"
 	"github.com/benhsm/goals/internal/ui/common"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -22,7 +24,7 @@ var (
 	listItemRender = func(i data.Intention) string {
 		var color lipgloss.TerminalColor
 		color = lipgloss.NoColor{}
-		if i.Whys != nil {
+		if len(i.Whys) > 0 {
 			color = i.Whys[0].Color
 		}
 		prefix := "[ ] "
@@ -60,6 +62,7 @@ type todayModel struct {
 	whys       *[]data.Why
 	intentions []data.Intention
 	input      textinput.Model
+	date       *time.Time
 
 	focusIndex int
 	adding     bool
@@ -93,26 +96,37 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 			m.focusIndex++
 		case "k":
 			m.focusIndex--
-		case "J":
-			if m.focusIndex < len(m.intentions)-1 {
-				m.intentions[m.focusIndex+1], m.intentions[m.focusIndex] =
-					m.intentions[m.focusIndex], m.intentions[m.focusIndex+1]
-				m.focusIndex++
-			}
-		case "K":
-			if m.focusIndex > 0 {
-				m.intentions[m.focusIndex-1], m.intentions[m.focusIndex] =
-					m.intentions[m.focusIndex], m.intentions[m.focusIndex-1]
-				m.focusIndex--
-			}
-		case "c":
-			m.intentions[m.focusIndex].Cancelled = !m.intentions[m.focusIndex].Cancelled
-		case "space", "enter":
-			m.intentions[m.focusIndex].Done = !m.intentions[m.focusIndex].Done
 		case "a":
 			m.adding = true
 		case "ctrl+d":
 			m.finished = true
+		case "J", "K", "c", "space", "enter":
+			switch msg.String() {
+			case "J":
+				if m.focusIndex < len(m.intentions)-1 {
+					m.intentions[m.focusIndex+1], m.intentions[m.focusIndex] =
+						m.intentions[m.focusIndex], m.intentions[m.focusIndex+1]
+					m.focusIndex++
+				}
+				for i := range m.intentions {
+					m.intentions[i].Position = i
+				}
+			case "K":
+				if m.focusIndex > 0 {
+					m.intentions[m.focusIndex-1], m.intentions[m.focusIndex] =
+						m.intentions[m.focusIndex], m.intentions[m.focusIndex-1]
+					m.focusIndex--
+				}
+				for i := range m.intentions {
+					m.intentions[i].Position = i
+				}
+			case "c":
+				m.intentions[m.focusIndex].Cancelled = !m.intentions[m.focusIndex].Cancelled
+			case "space", "enter":
+				m.intentions[m.focusIndex].Done = !m.intentions[m.focusIndex].Done
+			}
+			cmds = append(cmds, m.common.UpsertIntentions(m.intentions))
+			cmds = append(cmds, m.common.GetDaysIntentions(*m.date))
 		}
 	}
 
@@ -122,7 +136,7 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 	if m.focusIndex > len(m.intentions)-1 {
 		m.focusIndex = 0
 	}
-	return m, tea.Batch(cmds...)
+	return m, tea.Sequence(cmds...)
 }
 
 func (m *todayModel) View() string {

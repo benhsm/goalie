@@ -30,6 +30,8 @@ type Model struct {
 	outcomesPage outcomeModel
 	state        activePage
 
+	Err error
+
 	height int
 	width  int
 }
@@ -51,11 +53,15 @@ func New(c common.Common) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
+	var cmds []tea.Cmd
 	m.inputPage = newInputModel(m.Common)
 	m.todayPage = newTodayModel(m.Common)
 	m.inputPage.whys = &m.whys
 	m.todayPage.whys = &m.whys
-	return m.inputPage.Init()
+	m.todayPage.date = &m.date
+	cmds = append(cmds, m.inputPage.Init())
+	cmds = append(cmds, m.GetDaysIntentions(m.date))
+	return tea.Batch(cmds...)
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -69,6 +75,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case common.WhyDataMsg:
 		if msg.Data != nil {
 			m.whys = msg.Data
+		}
+	case common.IntentionMsg:
+		if len(msg.Yesterday) > 0 {
+			for i := range msg.Yesterday {
+				if !msg.Yesterday[i].Outcome {
+					// we want to write outcomes for yesterday in this case.
+				}
+			}
+		}
+		if len(msg.Today) > 0 {
+			if msg.Today[0].Outcome {
+				m.date = m.date.AddDate(0, 0, 1)
+				m.todayPage.intentions = []data.Intention{}
+				m.state = inputActive
+			} else {
+				m.todayPage.intentions = msg.Today
+				m.state = todayActive
+			}
 		}
 	}
 
@@ -88,15 +112,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				m.inputPage.finished = false
 			} else {
-				// TODO: this will need to change when the UI is actually connected
-				// to the datalayer
-				m.todayPage.intentions =
-					append(m.todayPage.intentions, parsedIntentions...)
-				m.intentions = m.todayPage.intentions
+				intentions := append(m.todayPage.intentions, parsedIntentions...)
+				for i := range intentions {
+					intentions[i].Date = m.date
+					intentions[i].Position = i
+				}
+				cmd = m.UpsertIntentions(intentions)
+				cmds = append(cmds, cmd)
 				m.todayPage.adding = false
-				m.state = todayActive
+				m.state = loading
 			}
 		}
+	case loading:
+		cmd = m.GetDaysIntentions(m.date)
+		cmds = append(cmds, cmd)
 	case todayActive:
 		m.todayPage, cmd = m.todayPage.Update(msg)
 		cmds = append(cmds, cmd)
@@ -184,6 +213,10 @@ func parseIntentions(whys []data.Why, input string) ([]data.Intention, error) {
 			intention.Whys = append(intention.Whys, &whys[whyNum])
 		}
 		results = append(results, intention)
+	}
+
+	if results == nil {
+		return nil, errors.New("No intentions")
 	}
 	return results, nil
 }

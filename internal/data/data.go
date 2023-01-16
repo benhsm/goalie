@@ -35,14 +35,29 @@ func (Why) TableName() string {
 }
 
 type Intention struct {
-	ID        uint
-	CreatedAt time.Time
+	ID   uint
+	Date time.Time
 
 	Content   string
 	Done      bool
 	Cancelled bool
 
+	Outcome bool
+	// True for outcomes added at the end of the day
+	Unintended bool
+
+	// To keep track of where the intention is on the list relative to others
+	Position int
+
 	Whys []*Why `gorm:"many2many:whys_intentions;"`
+}
+
+type Day struct {
+	ID         uint
+	Date       time.Time
+	Why        Why
+	Enough     bool
+	Reflection string
 }
 
 func NewStore() Store {
@@ -62,15 +77,6 @@ func NewStore() Store {
 
 type Store struct {
 	db *gorm.DB
-}
-
-func (s *Store) GetDailyIntentions(day time.Time) ([]Intention, error) {
-	// Day is considered to begin at 4:00AM
-	dayStart := time.Date(day.Year(), day.Month(), day.Day(), 4, 0, 0, 0, day.Location())
-	dayEnd := dayStart.Add(time.Duration(24) * time.Hour)
-	var result []Intention
-	err := s.db.Model(&Intention{}).Preload("Whys").Where("created_at BETWEEN ? AND ?", dayStart, dayEnd).Find(&result).Error
-	return result, err
 }
 
 type WhyStatusEnum int
@@ -116,4 +122,17 @@ func (s *Store) DeleteWhys(whys []Why) error {
 		return nil
 	})
 	return err
+}
+
+func (s *Store) UpsertIntentions(items []Intention) error {
+	err := s.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&items).Error
+	return err
+}
+
+func (s *Store) GetDaysIntentions(day time.Time) ([]Intention, error) {
+	var results []Intention
+	err := s.db.Model(&Intention{}).Preload("Whys").Where("date = ?", day).Find(&results).Error
+	return results, err
 }

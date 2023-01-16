@@ -71,6 +71,15 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 	case tea.KeyMsg:
 
 		switch msg.Type {
+		case tea.KeyCtrlD:
+			var outcomes []data.Intention
+			for i := range m.sections {
+				outcomes = append(outcomes, m.sections[i].intentions...)
+			}
+			for i := range outcomes {
+				outcomes[i].Outcome = true
+			}
+			m.UpsertIntentions(outcomes)
 		case tea.KeyTab, tea.KeyShiftTab:
 			if msg.Type == tea.KeyTab {
 				m.focusIndex++
