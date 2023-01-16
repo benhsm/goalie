@@ -132,3 +132,10 @@ func (c *Common) GetDaysIntentions(day time.Time) tea.Cmd {
 		}
 	}
 }
+
+func (c *Common) UpsertDayReview(days []data.Day) tea.Cmd {
+	return func() tea.Msg {
+		err := c.Store.UpsertDayReview(days)
+		return ErrMsg{err}
+	}
+}

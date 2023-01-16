@@ -3,6 +3,7 @@ package today
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/benhsm/goals/internal/data"
 	"github.com/benhsm/goals/internal/ui/common"
@@ -27,6 +28,7 @@ type outcomeModel struct {
 	intentions   []data.Intention
 	outcomeIndex int
 
+	date       *time.Time
 	focusIndex int
 
 	sections     []outcomeSection
@@ -73,13 +75,22 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlD:
 			var outcomes []data.Intention
+			var days []data.Day
 			for i := range m.sections {
 				outcomes = append(outcomes, m.sections[i].intentions...)
+				var day data.Day
+				day.Date = *m.date
+				day.Why = *m.sections[i].why
+				day.Enough = m.sections[i].enough
+				day.Reflection = m.sections[i].input.Value()
 			}
 			for i := range outcomes {
 				outcomes[i].Outcome = true
 			}
-			m.UpsertIntentions(outcomes)
+			cmd = m.UpsertIntentions(outcomes)
+			cmds = append(cmds, cmd)
+			cmd = m.UpsertDayReview(days)
+			cmds = append(cmds, cmd)
 		case tea.KeyTab, tea.KeyShiftTab:
 			if msg.Type == tea.KeyTab {
 				m.focusIndex++
@@ -250,10 +261,6 @@ func (m outcomeModel) View() string {
 		}
 	}
 	s = append(s, m.sections[m.sectionIndex].addInput.View())
-	//	m.sections[m.sectionIndex].input.PromptStyle.Background(why.Color)
-	//	m.sections[m.sectionIndex].input.TextStyle.Background(why.Color).Border(lipgloss.NormalBorder(), true)
-	//	m.sections[m.sectionIndex].input.BackgroundStyle.Background(why.Color)
-	//	m.sections[m.sectionIndex].input.PlaceholderStyle.Background(why.Color)
 	inputBox := lipgloss.NewStyle().
 		BorderForeground(color).
 		Border(lipgloss.RoundedBorder(), true).

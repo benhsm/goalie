@@ -139,6 +139,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.todayPage.finished {
 			m.state = outcomesActive
 			m.outcomesPage = newOutcomeModel(m.Common, m.whys, m.intentions)
+			m.outcomesPage.date = &m.date
 		}
 	case outcomesActive:
 		m.outcomesPage, cmd = m.outcomesPage.Update(msg)

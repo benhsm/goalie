@@ -52,14 +52,6 @@ type Intention struct {
 	Whys []*Why `gorm:"many2many:whys_intentions;"`
 }
 
-type Day struct {
-	ID         uint
-	Date       time.Time
-	Why        Why
-	Enough     bool
-	Reflection string
-}
-
 func NewStore() Store {
 	dataFilePath, err := xdg.DataFile("why/why.db")
 	if err != nil {
@@ -135,4 +127,21 @@ func (s *Store) GetDaysIntentions(day time.Time) ([]Intention, error) {
 	var results []Intention
 	err := s.db.Model(&Intention{}).Preload("Whys").Where("date = ?", day).Find(&results).Error
 	return results, err
+}
+
+// Reviews
+
+type Day struct {
+	ID         uint
+	Date       time.Time
+	Why        Why
+	Enough     bool
+	Reflection string
+}
+
+func (s *Store) UpsertDayReview(days []Day) error {
+	err := s.db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&days).Error
+	return err
 }
