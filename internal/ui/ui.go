@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"github.com/benhsm/goals/internal/ui/common"
-	"github.com/benhsm/goals/internal/ui/today"
-	whys "github.com/benhsm/goals/internal/ui/whys"
+	"github.com/benhsm/goalie/internal/ui/common"
+	"github.com/benhsm/goalie/internal/ui/today"
+	whys "github.com/benhsm/goalie/internal/ui/whys"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

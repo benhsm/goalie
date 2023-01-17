@@ -1,4 +1,4 @@
-module github.com/benhsm/goals
+module github.com/benhsm/goalie
 
 go 1.19
 

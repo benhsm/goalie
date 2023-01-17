@@ -53,7 +53,7 @@ type Intention struct {
 }
 
 func NewStore() Store {
-	dataFilePath, err := xdg.DataFile("why/why.db")
+	dataFilePath, err := xdg.DataFile("goalie/goalie.db")
 	if err != nil {
 		log.Fatalf("Could not find datafile path: %v", err)
 	}

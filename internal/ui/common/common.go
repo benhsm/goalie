@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/benhsm/goals/internal/data"
+	"github.com/benhsm/goalie/internal/data"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"

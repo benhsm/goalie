@@ -3,8 +3,8 @@ package today
 import (
 	"time"
 
-	"github.com/benhsm/goals/internal/data"
-	"github.com/benhsm/goals/internal/ui/common"
+	"github.com/benhsm/goalie/internal/data"
+	"github.com/benhsm/goalie/internal/ui/common"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

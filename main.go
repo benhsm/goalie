@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/benhsm/goals/internal/ui"
+	"github.com/benhsm/goalie/internal/ui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
