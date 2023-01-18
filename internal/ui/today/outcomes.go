@@ -253,18 +253,20 @@ func (m outcomeModel) View() string {
 	var s []string
 	for i, intention := range m.sections[m.sectionIndex].intentions {
 		var renderedIntention string
-		if intention.Cancelled {
-			renderedIntention = cancelledRender(intention)
-		} else if intention.Done {
-			renderedIntention = doneItemRender(intention)
-		} else {
-			renderedIntention = listItemRender(intention)
-		}
+		var selected bool
 		if m.outcomeIndex == i && m.focusIndex == outcomesFocus {
-			s = append(s, selectedStyle.Render(renderedIntention))
+			selected = true
 		} else {
-			s = append(s, renderedIntention)
+			selected = false
 		}
+		if intention.Cancelled {
+			renderedIntention = cancelledRender(intention, selected)
+		} else if intention.Done {
+			renderedIntention = doneItemRender(intention, selected)
+		} else {
+			renderedIntention = listItemRender(intention, selected)
+		}
+		s = append(s, renderedIntention)
 	}
 	s = append(s, m.sections[m.sectionIndex].addInput.View())
 	inputBox := lipgloss.NewStyle().
@@ -279,7 +281,7 @@ func (m outcomeModel) View() string {
 	enoughLine = lipgloss.NewStyle().Foreground(color).Render(enoughLine)
 	if m.sections[m.sectionIndex].enough {
 		enoughLine = lipgloss.JoinHorizontal(lipgloss.Center,
-			enoughLine, " ["+checkmark+"]")
+			enoughLine, " ["+checkBox+"]")
 	} else {
 		enoughLine = lipgloss.JoinHorizontal(lipgloss.Center,
 			enoughLine, " [X]")

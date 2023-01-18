@@ -16,44 +16,71 @@ var (
 			Width(50).
 			Border(lipgloss.RoundedBorder(), true).
 			Margin(1, 0, 0, 0)
-	checkmark = lipgloss.NewStyle().SetString("✓").
-			Foreground(lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}).
-			String()
 	selectedStyle = lipgloss.NewStyle().
 			Bold(true)
-	listItemRender = func(i data.Intention) string {
+	checkBox = "  [" + lipgloss.NewStyle().SetString("✓").
+			Foreground(lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}).
+			String() + "] "
+	boldCheck = selectedStyle.Render("• [") + lipgloss.NewStyle().SetString("✓").
+			Foreground(lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}).
+			Bold(true).
+			String() + selectedStyle.Render("] ")
+	cancelledStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#969B86", Dark: "#696969"}).
+			Strikethrough(true)
+	cancelledBox      = "  " + cancelledStyle.Render("[x] ")
+	selectedCancelled = selectedStyle.Render("• ") + cancelledStyle.Bold(true).Render("[x] ")
+	listItemStyle     = func(i data.Intention) lipgloss.TerminalColor {
 		var color lipgloss.TerminalColor
 		color = lipgloss.NoColor{}
 		if len(i.Whys) > 0 {
 			color = i.Whys[0].Color
 		}
-		prefix := "[ ] "
+		return color
+	}
+	listItemRender = func(i data.Intention, selected bool) string {
+		color := listItemStyle(i)
+		var prefix string
+		if selected {
+			prefix = selectedStyle.Render("• [ ] ")
+		} else {
+			prefix = "  [ ] "
+		}
 		return lipgloss.JoinHorizontal(lipgloss.Top, prefix, lipgloss.NewStyle().
 			Foreground(color).
-			Width(46).
+			Width(44).
+			Bold(selected).
 			Render(i.Content))
 	}
-	doneItemRender = func(i data.Intention) string {
-		var color lipgloss.TerminalColor
-		color = lipgloss.NoColor{}
-		if len(i.Whys) > 0 {
-			color = i.Whys[0].Color
+	doneItemRender = func(i data.Intention, selected bool) string {
+		color := listItemStyle(i)
+		var prefix string
+		if selected {
+			prefix = boldCheck
+		} else {
+			prefix = checkBox
 		}
-		prefix := "[" + checkmark + "] "
 		return lipgloss.JoinHorizontal(lipgloss.Top, prefix, lipgloss.NewStyle().
 			Foreground(color).
-			Width(46).
+			Width(44).
+			Bold(selected).
 			Strikethrough(true).
 			Render(i.Content))
 	}
-	cancelledRender = func(i data.Intention) string {
-		return lipgloss.NewStyle().
+	cancelledRender = func(i data.Intention, selected bool) string {
+		var prefix string
+		if selected {
+			prefix = selectedCancelled
+		} else {
+			prefix = cancelledBox
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Top, prefix, lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "#969B86", Dark: "#696969"}).
-			Background(lipgloss.AdaptiveColor{Light: "255", Dark: "0"}).
+			//			Background(lipgloss.AdaptiveColor{Light: "255", Dark: "0"}).
 			Strikethrough(true).
 			Width(50).
-			Bold(true).
-			Render("[" + "X" + "] " + i.Content)
+			Bold(selected).
+			Render(i.Content))
 	}
 )
 
@@ -143,18 +170,18 @@ func (m *todayModel) View() string {
 	var s []string
 	for i, intention := range m.intentions {
 		var renderedIntention string
-		if intention.Cancelled {
-			renderedIntention = cancelledRender(intention)
-		} else if intention.Done {
-			renderedIntention = doneItemRender(intention)
-		} else {
-			renderedIntention = listItemRender(intention)
-		}
+		selected := false
 		if m.focusIndex == i {
-			s = append(s, selectedStyle.Render(renderedIntention))
-		} else {
-			s = append(s, renderedIntention)
+			selected = true
 		}
+		if intention.Cancelled {
+			renderedIntention = cancelledRender(intention, selected)
+		} else if intention.Done {
+			renderedIntention = doneItemRender(intention, selected)
+		} else {
+			renderedIntention = listItemRender(intention, selected)
+		}
+		s = append(s, renderedIntention)
 	}
 	listBox := lipgloss.JoinVertical(lipgloss.Left, s...)
 	listBox = listBoxStyle.Render(listBox)
