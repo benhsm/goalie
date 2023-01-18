@@ -1,6 +1,7 @@
 package today
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/benhsm/goalie/internal/data"
@@ -168,6 +169,17 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 
 func (m *todayModel) View() string {
 	var s []string
+	var totalIntentions int
+	var doneIntentions int
+	for _, intention := range m.intentions {
+		if !intention.Cancelled {
+			totalIntentions++
+			if intention.Done {
+				doneIntentions++
+			}
+		}
+	}
+	prompt := promptStyle.Render(fmt.Sprintf("\n%d intentions for today, %d/%d done", totalIntentions, doneIntentions, totalIntentions))
 	for i, intention := range m.intentions {
 		var renderedIntention string
 		selected := false
@@ -186,7 +198,7 @@ func (m *todayModel) View() string {
 	listBox := lipgloss.JoinVertical(lipgloss.Left, s...)
 	listBox = listBoxStyle.Render(listBox)
 	badges := badgeStyle.Render(whyBadges(*m.whys))
-	return lipgloss.JoinVertical(lipgloss.Center, listBox, badges)
+	return lipgloss.JoinVertical(lipgloss.Center, prompt, listBox, badges)
 }
 
 func (m *todayModel) SetSize(height, width int) {
