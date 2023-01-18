@@ -61,7 +61,7 @@ func NewStore() Store {
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
 	}
-	db.AutoMigrate(&Why{}, &Intention{})
+	db.AutoMigrate(&Why{}, &Intention{}, &Day{})
 	return Store{
 		db: db,
 	}
@@ -132,8 +132,8 @@ func (s *Store) GetDaysIntentions(day time.Time) ([]Intention, error) {
 // Reviews
 
 type Day struct {
-	ID         uint
 	Date       time.Time
+	WhyID      uint
 	Why        Why
 	Enough     bool
 	Reflection string

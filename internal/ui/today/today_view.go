@@ -36,7 +36,7 @@ var (
 	doneItemRender = func(i data.Intention) string {
 		var color lipgloss.TerminalColor
 		color = lipgloss.NoColor{}
-		if i.Whys != nil {
+		if len(i.Whys) > 0 {
 			color = i.Whys[0].Color
 		}
 		prefix := "[" + checkmark + "] "

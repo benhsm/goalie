@@ -93,6 +93,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.todayPage.intentions = msg.Today
 				m.state = todayActive
 			}
+		} else {
+			m.state = inputActive
 		}
 	}
 
@@ -138,7 +140,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.todayPage.finished {
 			m.state = outcomesActive
-			m.outcomesPage = newOutcomeModel(m.Common, m.whys, m.intentions)
+			m.outcomesPage = newOutcomeModel(m.Common, m.whys, m.todayPage.intentions)
 			m.outcomesPage.date = &m.date
 		}
 	case outcomesActive:

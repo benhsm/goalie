@@ -80,9 +80,12 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 				outcomes = append(outcomes, m.sections[i].intentions...)
 				var day data.Day
 				day.Date = *m.date
-				day.Why = *m.sections[i].why
+				if m.sections[i].why != nil {
+					day.Why = *m.sections[i].why
+				}
 				day.Enough = m.sections[i].enough
 				day.Reflection = m.sections[i].input.Value()
+				days = append(days, day)
 			}
 			for i := range outcomes {
 				outcomes[i].Outcome = true
@@ -91,6 +94,8 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			cmd = m.UpsertDayReview(days)
 			cmds = append(cmds, cmd)
+			cmds = append(cmds, m.GetDaysIntentions(*m.date))
+			return m, tea.Sequence(cmds...)
 		case tea.KeyTab, tea.KeyShiftTab:
 			if msg.Type == tea.KeyTab {
 				m.focusIndex++
@@ -154,6 +159,7 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 					newIntention.Content = content
 					newIntention.Unintended = true
 					newIntention.Done = true
+					newIntention.Date = *m.date
 
 					m.sections[m.sectionIndex].addInput.Reset()
 					m.sections[m.sectionIndex].intentions =
@@ -318,7 +324,7 @@ func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcome
 
 	miscSection := outcomeSection{}
 	for _, intention := range intentions {
-		if intention.Whys == nil {
+		if len(intention.Whys) == 0 {
 			miscSection.intentions = append(miscSection.intentions, intention)
 		}
 	}
