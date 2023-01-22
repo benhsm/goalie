@@ -80,7 +80,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(msg.Yesterday) > 0 {
 			for i := range msg.Yesterday {
 				if !msg.Yesterday[i].Outcome {
-					// we want to write outcomes for yesterday in this case.
+					m.date = m.date.AddDate(0, 0, -1)
+					m.state = outcomesActive
+					m.outcomesPage = newOutcomeModel(m.Common, m.whys, msg.Yesterday)
+					m.outcomesPage.date = &m.date
+					return m, tea.Batch(cmds...)
 				}
 			}
 		}
