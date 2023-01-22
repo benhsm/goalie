@@ -49,6 +49,8 @@ type Intention struct {
 	// To keep track of where the intention is on the list relative to others
 	Position int
 
+	Pomos int
+
 	Whys []*Why `gorm:"many2many:whys_intentions;"`
 }
 

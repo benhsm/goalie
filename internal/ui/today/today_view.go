@@ -2,6 +2,7 @@ package today
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/benhsm/goalie/internal/data"
@@ -39,6 +40,9 @@ var (
 		}
 		return color
 	}
+	pomos = func(i data.Intention) string {
+		return " " + strings.Repeat("🍅", i.Pomos)
+	}
 	listItemRender = func(i data.Intention, selected bool) string {
 		color := listItemStyle(i)
 		var prefix string
@@ -51,7 +55,7 @@ var (
 			Foreground(color).
 			Width(44).
 			Bold(selected).
-			Render(i.Content))
+			Render(i.Content+pomos(i)))
 	}
 	doneItemRender = func(i data.Intention, selected bool) string {
 		color := listItemStyle(i)
@@ -66,7 +70,7 @@ var (
 			Width(44).
 			Bold(selected).
 			Strikethrough(true).
-			Render(i.Content))
+			Render(i.Content+pomos(i)))
 	}
 	cancelledRender = func(i data.Intention, selected bool) string {
 		var prefix string
@@ -128,7 +132,8 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 			m.adding = true
 		case "ctrl+d":
 			m.finished = true
-		case "J", "K", "c", "space", "enter":
+		// keys that modify the intention list
+		case "J", "K", "c", "space", "enter", "p", "P":
 			switch msg.String() {
 			case "J":
 				if m.focusIndex < len(m.intentions)-1 {
@@ -152,6 +157,13 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 				m.intentions[m.focusIndex].Cancelled = !m.intentions[m.focusIndex].Cancelled
 			case "space", "enter":
 				m.intentions[m.focusIndex].Done = !m.intentions[m.focusIndex].Done
+			case "p", "P":
+				if msg.String() == "p" {
+					m.intentions[m.focusIndex].Pomos++
+				}
+				if msg.String() == "P" && m.intentions[m.focusIndex].Pomos > 0 {
+					m.intentions[m.focusIndex].Pomos--
+				}
 			}
 			cmds = append(cmds, m.common.UpsertIntentions(m.intentions))
 			cmds = append(cmds, m.common.GetDaysIntentions(*m.date))
