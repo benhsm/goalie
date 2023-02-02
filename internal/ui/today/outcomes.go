@@ -281,7 +281,7 @@ func (m outcomeModel) View() string {
 	enoughLine = lipgloss.NewStyle().Foreground(color).Render(enoughLine)
 	if m.sections[m.sectionIndex].enough {
 		enoughLine = lipgloss.JoinHorizontal(lipgloss.Center,
-			enoughLine, " ["+checkBox+"]")
+			enoughLine, checkBox)
 	} else {
 		enoughLine = lipgloss.JoinHorizontal(lipgloss.Center,
 			enoughLine, " [X]")
@@ -314,7 +314,7 @@ func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcome
 		}
 		section.addInput = textinput.New()
 		section.addInput.Width = 42
-		section.addInput.Prompt = fmt.Sprintf("[+] %d) ", why.Number)
+		section.addInput.Prompt = fmt.Sprintf("  [+] %d) ", why.Number)
 		section.addInput.Placeholder = ""
 
 		section.input = textinput.New()
@@ -332,7 +332,7 @@ func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcome
 	}
 	miscSection.addInput = textinput.New()
 	miscSection.addInput.Width = 42
-	miscSection.addInput.Prompt = "[+] &) "
+	miscSection.addInput.Prompt = "  [+] &) "
 	miscSection.addInput.Placeholder = ""
 
 	miscSection.input = textinput.New()
