@@ -83,7 +83,7 @@ var (
 			Foreground(lipgloss.AdaptiveColor{Light: "#969B86", Dark: "#696969"}).
 			//			Background(lipgloss.AdaptiveColor{Light: "255", Dark: "0"}).
 			Strikethrough(true).
-			Width(50).
+			Width(44).
 			Bold(selected).
 			Render(i.Content))
 	}
