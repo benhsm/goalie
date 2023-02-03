@@ -47,3 +47,12 @@ goals, for most people I would recommend making use of Complice instead.
     - [ ] Quarterly
     - [ ] Yearly
 
+## Files
+
+On Unix systems, Goalie will try to store its data in an sqlite database
+`goalie.db` in a folder in $XDG_DATA_HOME as specified in the [XDG base
+directory
+specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html).
+On Windows, it will attempt to use the equivalent [Windows Known
+Folder](https://learn.microsoft.com/en-us/windows/win32/shell/known-folders). No
+configuration files yet.
