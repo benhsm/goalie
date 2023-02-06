@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/benhsm/goalie/internal/ui/common"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -43,6 +45,9 @@ type goalInputModel struct {
 	Cancelled     bool
 	Color         lipgloss.Color
 	choosingColor bool
+
+	keys inputKeyMap
+	help help.Model
 }
 
 const (
@@ -70,6 +75,8 @@ func newGoalInput() goalInputModel {
 		DescInput:   ta,
 		colorpicker: cp,
 		Color:       cp.Colors[randomIndex],
+		help:        help.New(),
+		keys:        inputKeys,
 	}
 }
 
@@ -117,7 +124,7 @@ func (m goalInputModel) View() string {
 
 	buttons := lipgloss.JoinHorizontal(lipgloss.Center, doneButton, cancelButton)
 
-	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, inputFields, colorField, buttons))
+	b.WriteString(lipgloss.JoinVertical(lipgloss.Center, inputFields, colorField, buttons, "", m.help.View(inputKeys)))
 
 	return lipgloss.Place(m.Width, m.Height, lipgloss.Center, lipgloss.Center,
 		b.String())
@@ -147,18 +154,18 @@ func (m goalInputModel) goalInputUpdate(msg tea.Msg) (goalInputModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Height, msg.Width)
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyCtrlC:
+		switch {
+		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 
-		case tea.KeyTab, tea.KeyShiftTab, tea.KeyEnter:
-			if msg.Type == tea.KeyTab {
+		case key.Matches(msg, m.keys.ChangeFocus, m.keys.ChangeFocusBack, m.keys.Select):
+			if key.Matches(msg, m.keys.ChangeFocus) {
 				m.focusIndex++
-			} else if msg.Type == tea.KeyShiftTab {
+			} else if key.Matches(msg, m.keys.ChangeFocusBack) {
 				m.focusIndex--
 			}
 
-			if msg.Type == tea.KeyEnter {
+			if key.Matches(msg, m.keys.Select) {
 				if m.focusIndex == focusDone {
 					m.Done = true
 				} else if m.focusIndex == focusCancel {
@@ -201,4 +208,49 @@ func (m goalInputModel) goalInputUpdate(msg tea.Msg) (goalInputModel, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
+}
+
+type inputKeyMap struct {
+	Done            key.Binding
+	Quit            key.Binding
+	ChangeFocus     key.Binding
+	ChangeFocusBack key.Binding
+	Select          key.Binding
+	Help            key.Binding
+}
+
+var inputKeys = inputKeyMap{
+	Done: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("ctrl+d", "submit"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("ctrl+c", "quit"),
+	),
+	ChangeFocus: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "change focus"),
+	),
+	ChangeFocusBack: key.NewBinding(
+		key.WithKeys("shift+tab"),
+	),
+	Select: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "expand help"),
+	),
+}
+
+// Shorthelp is part of the key.Map interface
+func (k inputKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.ChangeFocus, k.Select, k.Quit}
+}
+
+// FullHelp is part of the key.Map interface
+func (k inputKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{}
 }

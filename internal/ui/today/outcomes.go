@@ -7,6 +7,8 @@ import (
 
 	"github.com/benhsm/goalie/internal/data"
 	"github.com/benhsm/goalie/internal/ui/common"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -34,6 +36,9 @@ type outcomeModel struct {
 	sections     []outcomeSection
 	sectionIndex int
 	finished     bool
+
+	help help.Model
+	keys outcomesKeyMap
 }
 
 type outcomeSection struct {
@@ -56,6 +61,8 @@ func newOutcomeModel(c common.Common, whys []data.Why, intentions []data.Intenti
 		whys:       whys,
 		intentions: intentions,
 		sections:   makeOutcomeSections(whys, intentions),
+		help:       help.New(),
+		keys:       outcomeKeys,
 	}
 }
 
@@ -72,8 +79,8 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 		m.SetSize(msg.Height, msg.Width)
 	case tea.KeyMsg:
 
-		switch msg.Type {
-		case tea.KeyCtrlD:
+		switch {
+		case key.Matches(msg, m.keys.SubmitOutcomes):
 			var outcomes []data.Intention
 			var days []data.Day
 			for i := range m.sections {
@@ -96,11 +103,11 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 			cmds = append(cmds, cmd)
 			cmds = append(cmds, m.GetDaysIntentions(*m.date))
 			return m, tea.Sequence(cmds...)
-		case tea.KeyTab, tea.KeyShiftTab:
-			if msg.Type == tea.KeyTab {
+		case key.Matches(msg, m.keys.ChangeFocus, m.keys.ChangeFocusBack):
+			if key.Matches(msg, m.keys.ChangeFocus) {
 				m.focusIndex++
 			}
-			if msg.Type == tea.KeyShiftTab {
+			if key.Matches(msg, m.keys.ChangeFocusBack) {
 				m.focusIndex--
 			}
 
@@ -123,7 +130,7 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 			}
 
 			return m, tea.Batch(cmds...)
-		case tea.KeyEsc:
+		case key.Matches(msg, m.keys.Escape):
 			if m.sections[m.sectionIndex].addInput.Focused() {
 				m.sections[m.sectionIndex].addInput.Blur()
 			}
@@ -167,36 +174,37 @@ func (m outcomeModel) Update(msg tea.Msg) (outcomeModel, tea.Cmd) {
 					m.sections[m.sectionIndex].addInput.Blur()
 				}
 			} else {
-				switch msg.Type {
-				case tea.KeyEnter, tea.KeySpace:
+				switch {
+				case key.Matches(msg, m.keys.MarkDone):
 					if m.sections[m.sectionIndex].intentions != nil {
 						m.sections[m.sectionIndex].intentions[m.outcomeIndex].Done =
 							!m.sections[m.sectionIndex].intentions[m.outcomeIndex].Done
 					}
-				case tea.KeyBackspace:
+				case key.Matches(msg, m.keys.Cancel):
 					if m.sections[m.sectionIndex].intentions != nil {
 						m.sections[m.sectionIndex].intentions[m.outcomeIndex].Cancelled =
 							!m.sections[m.sectionIndex].intentions[m.outcomeIndex].Cancelled
 					}
-				case tea.KeyRunes:
-					switch msg.String() {
-					case "j":
-						m.outcomeIndex++
-					case "k":
-						m.outcomeIndex--
-					case "l":
-						m.sectionIndex++
-					case "h":
-						m.sectionIndex--
-					case "y":
-						m.sections[m.sectionIndex].enough = true
-					case "n":
-						m.sections[m.sectionIndex].enough = false
-					case "a":
-						cmd := m.sections[m.sectionIndex].addInput.Focus()
-						cmds = append(cmds, cmd)
-						return m, tea.Batch(cmds...)
-					}
+				case key.Matches(msg, m.keys.Down):
+					m.outcomeIndex++
+				case key.Matches(msg, m.keys.Up):
+					m.outcomeIndex--
+				case key.Matches(msg, m.keys.Right):
+					m.sectionIndex++
+				case key.Matches(msg, m.keys.Left):
+					m.sectionIndex--
+				case key.Matches(msg, m.keys.Yes):
+					m.sections[m.sectionIndex].enough = true
+				case key.Matches(msg, m.keys.Yes):
+					m.sections[m.sectionIndex].enough = false
+				case key.Matches(msg, m.keys.Add):
+					cmd := m.sections[m.sectionIndex].addInput.Focus()
+					cmds = append(cmds, cmd)
+					return m, tea.Batch(cmds...)
+				case key.Matches(msg, m.keys.Quit):
+					return m, tea.Quit
+				case key.Matches(msg, m.keys.Help):
+					m.help.ShowAll = !m.help.ShowAll
 				}
 			}
 		}
@@ -295,6 +303,7 @@ func (m outcomeModel) View() string {
 	rightBox := lipgloss.JoinVertical(lipgloss.Left, title, outcomeBox, enoughLine, inputBox)
 	goalCount := fmt.Sprintf("Page %d/%d to review", m.sectionIndex+1, len(m.sections))
 	rightBox = lipgloss.JoinVertical(lipgloss.Right, prompt, "", rightBox, goalCount)
+	rightBox = lipgloss.JoinVertical(lipgloss.Center, rightBox, "", m.help.View(outcomeKeys))
 
 	return sectionStyle.Render(rightBox)
 }
@@ -345,4 +354,114 @@ func makeOutcomeSections(whys []data.Why, intentions []data.Intention) []outcome
 		panic("empty")
 	}
 	return result
+}
+
+type outcomesKeyMap struct {
+	Up              key.Binding
+	Down            key.Binding
+	Left            key.Binding
+	Right           key.Binding
+	Yes             key.Binding
+	No              key.Binding
+	ShiftUp         key.Binding
+	ShiftDown       key.Binding
+	Help            key.Binding
+	Quit            key.Binding
+	Cancel          key.Binding
+	Add             key.Binding
+	MarkDone        key.Binding
+	AssignPomo      key.Binding
+	UnassignPomo    key.Binding
+	SubmitOutcomes  key.Binding
+	ChangeFocus     key.Binding
+	ChangeFocusBack key.Binding
+	Escape          key.Binding
+}
+
+var outcomeKeys = outcomesKeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Left: key.NewBinding(
+		key.WithKeys("left", "h"),
+		key.WithHelp("←/h", "prev goal"),
+	),
+	Right: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("→/l", "next goal"),
+	),
+	Yes: key.NewBinding(
+		key.WithKeys("y"),
+		key.WithHelp("y", "+enough"),
+	),
+	No: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "-enough"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "help"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+	Cancel: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "cancel"),
+	),
+	Add: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "add"),
+	),
+	MarkDone: key.NewBinding(
+		key.WithKeys(" ", "enter"),
+		key.WithHelp("space/enter", "check"),
+	),
+	AssignPomo: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "+pomo"),
+	),
+	UnassignPomo: key.NewBinding(
+		key.WithKeys("P"),
+		key.WithHelp("P", "-pomo"),
+	),
+	SubmitOutcomes: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("ctrl+d", "done"),
+	),
+	ChangeFocus: key.NewBinding(
+		key.WithKeys("tab"),
+		key.WithHelp("tab", "+focus"),
+	),
+	ChangeFocusBack: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "-focus"),
+	),
+	Escape: key.NewBinding(
+		key.WithKeys("esc"),
+		key.WithHelp("esc", "unfocus"),
+	),
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view. It's part
+// of the key.Map interface.
+func (k outcomesKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Quit}
+}
+
+// FullHelp returns keybindings for the expanded help view. It's part of the
+// key.Map interface.
+func (k outcomesKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down, k.Left, k.Right},                   // first column
+		{k.Add, k.MarkDone, k.AssignPomo, k.UnassignPomo}, // second column
+		{k.Yes, k.No, k.SubmitOutcomes, k.Help, k.Quit},
+		{k.ChangeFocus, k.ChangeFocusBack, k.Escape},
+	}
 }

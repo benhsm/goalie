@@ -7,6 +7,8 @@ import (
 
 	"github.com/benhsm/goalie/internal/data"
 	"github.com/benhsm/goalie/internal/ui/common"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -102,12 +104,17 @@ type todayModel struct {
 
 	height int
 	width  int
+
+	keys todayKeyMap
+	help help.Model
 }
 
 func newTodayModel(c common.Common) todayModel {
 	return todayModel{
 		common: c,
 		whys:   &[]data.Why{},
+		keys:   todayKeys,
+		help:   help.New(),
 	}
 }
 
@@ -123,19 +130,25 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.SetSize(msg.Height, msg.Width)
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "j":
+		switch {
+		case key.Matches(msg, m.keys.Down):
 			m.focusIndex++
-		case "k":
+		case key.Matches(msg, m.keys.Up):
 			m.focusIndex--
-		case "a":
+		case key.Matches(msg, m.keys.Add):
 			m.adding = true
-		case "ctrl+d":
+		case key.Matches(msg, m.keys.EndDay):
 			m.finished = true
+		case key.Matches(msg, m.keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, m.keys.Quit):
+			return m, tea.Quit
+
 		// keys that modify the intention list
-		case "J", "K", "c", "space", "enter", "p", "P":
-			switch msg.String() {
-			case "J":
+		case key.Matches(msg, m.keys.ShiftUp, m.keys.ShiftDown,
+			m.keys.MarkDone, m.keys.Cancel, m.keys.AssignPomo, m.keys.UnassignPomo):
+			switch {
+			case key.Matches(msg, m.keys.ShiftDown):
 				if m.focusIndex < len(m.intentions)-1 {
 					m.intentions[m.focusIndex+1], m.intentions[m.focusIndex] =
 						m.intentions[m.focusIndex], m.intentions[m.focusIndex+1]
@@ -144,7 +157,7 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 				for i := range m.intentions {
 					m.intentions[i].Position = i
 				}
-			case "K":
+			case key.Matches(msg, m.keys.ShiftUp):
 				if m.focusIndex > 0 {
 					m.intentions[m.focusIndex-1], m.intentions[m.focusIndex] =
 						m.intentions[m.focusIndex], m.intentions[m.focusIndex-1]
@@ -153,15 +166,15 @@ func (m todayModel) Update(msg tea.Msg) (todayModel, tea.Cmd) {
 				for i := range m.intentions {
 					m.intentions[i].Position = i
 				}
-			case "c":
+			case key.Matches(msg, m.keys.Cancel):
 				m.intentions[m.focusIndex].Cancelled = !m.intentions[m.focusIndex].Cancelled
-			case "space", "enter":
+			case key.Matches(msg, m.keys.MarkDone):
 				m.intentions[m.focusIndex].Done = !m.intentions[m.focusIndex].Done
-			case "p", "P":
-				if msg.String() == "p" {
+			case key.Matches(msg, m.keys.AssignPomo, outcomeKeys.UnassignPomo):
+				if key.Matches(msg, m.keys.AssignPomo) {
 					m.intentions[m.focusIndex].Pomos++
 				}
-				if msg.String() == "P" && m.intentions[m.focusIndex].Pomos > 0 {
+				if key.Matches(msg, m.keys.UnassignPomo) && m.intentions[m.focusIndex].Pomos > 0 {
 					m.intentions[m.focusIndex].Pomos--
 				}
 			}
@@ -210,7 +223,7 @@ func (m *todayModel) View() string {
 	listBox := lipgloss.JoinVertical(lipgloss.Left, s...)
 	listBox = listBoxStyle.Render(listBox)
 	badges := badgeStyle.Render(whyBadges(*m.whys))
-	return lipgloss.JoinVertical(lipgloss.Center, prompt, listBox, badges)
+	return lipgloss.JoinVertical(lipgloss.Center, prompt, listBox, badges, m.help.View(todayKeys))
 }
 
 func (m *todayModel) SetSize(height, width int) {
@@ -223,4 +236,86 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+type todayKeyMap struct {
+	Up           key.Binding
+	Down         key.Binding
+	ShiftUp      key.Binding
+	ShiftDown    key.Binding
+	Help         key.Binding
+	Quit         key.Binding
+	Cancel       key.Binding
+	Add          key.Binding
+	MarkDone     key.Binding
+	AssignPomo   key.Binding
+	UnassignPomo key.Binding
+	EndDay       key.Binding
+}
+
+var todayKeys = todayKeyMap{
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	ShiftUp: key.NewBinding(
+		key.WithKeys("K"),
+		key.WithHelp("K", "switch up"),
+	),
+	ShiftDown: key.NewBinding(
+		key.WithKeys("J"),
+		key.WithHelp("J", "switch down"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+	Cancel: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "cancel item"),
+	),
+	Add: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "add item"),
+	),
+	MarkDone: key.NewBinding(
+		key.WithKeys(" ", "enter"),
+		key.WithHelp("space/enter", "mark done"),
+	),
+	AssignPomo: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "assign pomo"),
+	),
+	UnassignPomo: key.NewBinding(
+		key.WithKeys("P"),
+		key.WithHelp("P", "unassign pomo"),
+	),
+	EndDay: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("ctrl+d", "end day"),
+	),
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view. It's part
+// of the key.Map interface.
+func (k todayKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Quit}
+}
+
+// FullHelp returns keybindings for the expanded help view. It's part of the
+// key.Map interface.
+func (k todayKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down, k.ShiftDown, k.ShiftUp},            // first column
+		{k.Add, k.MarkDone, k.AssignPomo, k.UnassignPomo}, // second column
+		{k.Cancel, k.EndDay, k.Help, k.Quit},
+	}
 }
